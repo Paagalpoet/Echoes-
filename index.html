@@ -1,0 +1,4721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="data:application/json;charset=utf-8,{%22name%22:%22Echoes%20of%20the%20Unvoiced%22,%22short_name%22:%22Echoes%22,%22display%22:%22fullscreen%22,%22orientation%22:%22landscape%22,%22background_color%22:%22%23000000%22,%22theme_color%22:%22%23000000%22,%22icons%22:[{%22src%22:%22data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==%22,%22sizes%22:%22512x512%22,%22type%22:%22image/png%22}]}">
+<title>Echoes of the Unvoiced</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    overflow: hidden;
+    font-family: 'Georgia', serif;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  canvas { display: block; }
+  
+  /* Touch Controls */
+  #touch-controls {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 35vh;
+    z-index: 200;
+    pointer-events: none;
+  }
+  .touch-btn {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(212,160,86,0.12);
+    border: 1.5px solid rgba(212,160,86,0.25);
+    color: rgba(212,160,86,0.5);
+    font-family: Georgia, serif;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: auto;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.1s;
+  }
+  .touch-btn:active, .touch-btn.pressed {
+    background: rgba(212,160,86,0.3);
+    border-color: rgba(212,160,86,0.5);
+  }
+  /* D-pad */
+  #dpad-left { left: 1.5vh; bottom: 10vh; width: 14vh; height: 14vh; font-size: 3.5vh; }
+  #dpad-right { left: 18vh; bottom: 10vh; width: 14vh; height: 14vh; font-size: 3.5vh; }
+  #dpad-up { left: 9.5vh; bottom: 25vh; width: 12vh; height: 12vh; font-size: 3vh; }
+  /* Action buttons */
+  #btn-jump { right: 2vh; bottom: 12vh; width: 16vh; height: 16vh; font-size: 2.2vh; }
+  #btn-resonance { right: 19vh; bottom: 18vh; width: 12vh; height: 12vh; font-size: 1.8vh; }
+  #btn-shell { right: 19vh; bottom: 4vh; width: 12vh; height: 12vh; font-size: 1.8vh; }
+  #btn-clarity { right: 2vh; bottom: 30vh; width: 10vh; height: 10vh; font-size: 1.5vh;
+    background: rgba(100,150,220,0.1); border-color: rgba(100,150,220,0.25); color: rgba(150,200,255,0.5); }
+  #btn-pause { position: absolute; top: 1.5vh; right: 1.5vh; width: 7vh; height: 7vh; font-size: 1.5vh;
+    border-radius: 20%; background: rgba(100,80,50,0.1); border-color: rgba(100,80,50,0.2); }
+  #title-screen {
+    position: fixed; inset: 0;
+    background: #000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 100;
+    transition: opacity 2s ease;
+  }
+  #title-screen.fade-out { opacity: 0; pointer-events: none; }
+  #title-screen h1 {
+    font-size: 3vw;
+    color: #d4a056;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    font-weight: 300;
+    text-shadow: 0 0 40px rgba(212,160,86,0.3);
+    animation: breathe 4s ease-in-out infinite;
+  }
+  #title-screen p {
+    color: #665533;
+    font-size: 1vw;
+    margin-top: 2vh;
+    letter-spacing: 0.2em;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  #title-screen .subtitle {
+    color: #443322;
+    font-size: 0.8vw;
+    margin-top: 4vh;
+    font-style: italic;
+    max-width: 40vw;
+    text-align: center;
+    line-height: 1.8;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+  }
+  #briefing-screen {
+    position: fixed; inset: 0;
+    background: #000;
+    display: none;
+    z-index: 90;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    padding: 5vh 5vw 15vh 5vw;
+    text-align: center;
+  }
+  #briefing-screen.show { display: block; }
+  #briefing-screen .inner-wrap {
+    max-width: 70vw;
+    margin: 0 auto;
+  }
+  #briefing-screen .act-label {
+    font-size: 0.7vw;
+    color: #665533;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    margin-bottom: 1vh;
+  }
+  #briefing-screen .act-title {
+    font-size: 2.2vw;
+    color: #d4a056;
+    letter-spacing: 0.15em;
+    font-weight: 300;
+    margin-bottom: 0.5vh;
+    text-shadow: 0 0 30px rgba(212,160,86,0.2);
+  }
+  #briefing-screen .act-subtitle {
+    font-size: 1vw;
+    color: #887755;
+    font-style: italic;
+    margin-bottom: 4vh;
+  }
+  #briefing-screen .section {
+    max-width: 50vw;
+    margin-bottom: 3vh;
+    text-align: left;
+  }
+  #briefing-screen .section-header {
+    font-size: 0.65vw;
+    color: #d4a056;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 1vh;
+  }
+  #briefing-screen .section-body {
+    font-size: 0.85vw;
+    color: #998866;
+    line-height: 2;
+  }
+  #briefing-screen .tips {
+    max-width: 50vw;
+    margin-bottom: 3vh;
+  }
+  #briefing-screen .tip {
+    font-size: 0.75vw;
+    color: #887755;
+    line-height: 1.8;
+    padding: 0.6vh 0;
+    border-bottom: 1px solid rgba(100,80,50,0.15);
+  }
+  #briefing-screen .tip span {
+    color: #d4a056;
+    font-weight: bold;
+  }
+  #briefing-screen .continue-prompt {
+    font-size: 0.8vw;
+    color: #665533;
+    margin-top: 3vh;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  /* ── Landscape Lock Overlay ── */
+  #rotate-notice {
+    display: none;
+    position: fixed; inset: 0;
+    background: #000;
+    z-index: 9999;
+    flex-direction: column;
+    align-items: center; justify-content: center;
+    color: #d4a056;
+    font-family: Georgia, serif;
+    text-align: center;
+    padding: 10vw;
+  }
+  #rotate-notice .icon { font-size: 15vw; margin-bottom: 4vh; }
+  #rotate-notice .msg { font-size: 5vw; line-height: 1.8; }
+
+  /* ── Mobile Font Scaling ── */
+  @media (max-width: 1024px), (max-height: 600px) {
+    #title-screen h1 { font-size: 5vw; }
+    #title-screen p { font-size: 2.5vw; }
+    #title-screen .subtitle { font-size: 2vw; max-width: 80vw; }
+    
+    #briefing-screen .act-label { font-size: 1.8vw; }
+    #briefing-screen .act-title { font-size: 4vw; }
+    #briefing-screen .act-subtitle { font-size: 2vw; }
+    #briefing-screen .section { max-width: 90vw; }
+    #briefing-screen .inner-wrap { max-width: 90vw; }
+    #briefing-screen .section-header { font-size: 1.6vw; }
+    #briefing-screen .section-body { font-size: 2vw; line-height: 1.6; }
+    #briefing-screen .tip { font-size: 1.8vw; }
+    #briefing-screen .continue-prompt { font-size: 2vw; }
+    #briefing-screen #scroll-hint { font-size: 2vw !important; }
+    
+    #prologue-screen div { max-width: 90vw !important; }
+    #prologue-screen p { font-size: 2.2vw !important; line-height: 1.7 !important; }
+    #prologue-screen #prologue-continue { font-size: 2vw !important; }
+    
+    #input-screen div { max-width: 90vw !important; }
+    #input-screen p { font-size: 2.2vw !important; }
+    #input-screen span { font-size: 1.8vw !important; }
+    #input-screen textarea { font-size: 2.5vw !important; width: 80vw !important; height: 8vh !important; }
+    #input-screen #input-continue { font-size: 2vw !important; }
+  }
+
+  /* Portrait orientation — show rotate notice */
+  @media (orientation: portrait) and (max-width: 1024px) {
+    #rotate-notice { display: flex !important; }
+    canvas, #touch-controls, #title-screen, #prologue-screen, 
+    #input-screen, #briefing-screen { display: none !important; }
+  }
+  @media (orientation: landscape) {
+    #rotate-notice { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Landscape lock notice -->
+<div id="rotate-notice">
+  <div class="icon">📱↔️</div>
+  <div class="msg">Please rotate your phone<br>to landscape mode</div>
+</div>
+
+<div id="title-screen" onclick="if(gameState==='title')startGame();" style="cursor:pointer;">
+  <h1>Echoes of the Unvoiced</h1>
+  <p class="subtitle">A suppressed thought journeys toward spoken expression</p>
+  <p>tap to begin</p>
+</div>
+
+<div id="prologue-screen" style="position:fixed;inset:0;background:#000;display:none;z-index:95;padding:3vh 5vw 10vh 5vw;overflow-y:scroll;-webkit-overflow-scrolling:touch;text-align:center;">
+  <div style="max-width:80vw;margin:0 auto;">
+    <p style="font-size:0.95vw;color:#998866;line-height:2.4;opacity:0;" id="prologue-text"></p>
+    <div id="prologue-continue" onclick="if(gameState==='prologue'&&briefingReady){hidePrologue();briefingReady=false;setTimeout(()=>showInputScreen(),1500);}" style="
+      font-size:0.8vw;color:#665533;margin-top:4vh;opacity:0;cursor:pointer;
+      padding:1.5vh 4vw;display:inline-block;
+      background:rgba(212,160,86,0.08);border:1px solid rgba(212,160,86,0.2);border-radius:6px;
+    ">▶ tap to continue</div>
+  </div>
+</div>
+
+<div id="input-screen" style="position:fixed;inset:0;background:#000;display:none;z-index:94;padding:3vh 5vw 10vh 5vw;overflow-y:scroll;-webkit-overflow-scrolling:touch;text-align:center;align-items:center;justify-content:center;flex-direction:column;">
+  <div style="max-width:50vw;text-align:center;margin:0 auto;">
+    <p style="font-size:0.7vw;color:#665533;letter-spacing:0.3em;text-transform:uppercase;margin-bottom:3vh;">Before you begin</p>
+    <p style="font-size:1.1vw;color:#998866;line-height:2;margin-bottom:4vh;">What is the thought you have been holding back?<br><span style="font-size:0.8vw;color:#665533;font-style:italic;">The words you could never say. Type them here.<br>This will become Your Voice at the end of its journey.</span></p>
+    <textarea id="player-thought" placeholder="Type your unspoken truth here..." style="
+      width:40vw;height:12vh;background:rgba(212,160,86,0.05);border:1px solid rgba(212,160,86,0.2);
+      color:#d4a056;font-family:Georgia,serif;font-size:1vw;padding:2vh;resize:none;text-align:center;
+      outline:none;border-radius:4px;line-height:1.8;
+    "></textarea>
+    <p style="font-size:0.75vw;color:#443322;margin-top:3vh;cursor:pointer;transition:color 0.3s;" id="input-continue" onclick="submitThought()">tap here to seal your words</p>
+  </div>
+</div>
+
+<div id="briefing-screen">
+  <div class="inner-wrap">
+    <div class="act-label" id="brief-label"></div>
+    <div class="act-title" id="brief-title"></div>
+    <div class="act-subtitle" id="brief-subtitle"></div>
+    <div class="section">
+      <div class="section-header">The Meaning</div>
+      <div class="section-body" id="brief-meaning"></div>
+    </div>
+    <div class="section">
+      <div class="section-header">How to Survive</div>
+      <div class="section-body" id="brief-survive"></div>
+    </div>
+    <div class="tips" id="brief-tips"></div>
+    <div class="section">
+      <div class="section-header">Controls</div>
+      <div class="tips" id="brief-controls"></div>
+    </div>
+    <div id="brief-continue-btn" onclick="if(gameState==='briefing'&&briefingReady){hideBriefing();briefingReady=false;setTimeout(()=>startTour(currentAct||1),1200);}" style="
+      margin:4vh auto 6vh;padding:2vh 5vw;
+      background:rgba(212,160,86,0.1);border:1px solid rgba(212,160,86,0.3);
+      color:#d4a056;font-family:Georgia;font-size:2vw;border-radius:6px;
+      cursor:pointer;display:inline-block;text-align:center;
+    ">▶ tap to begin</div>
+  </div>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+// Register PWA service worker as inline blob (no external sw.js needed)
+if ('serviceWorker' in navigator) {
+  const swCode = `
+    const CACHE = 'echoes-v1';
+    self.addEventListener('install', e => {
+      e.waitUntil(caches.open(CACHE).then(c => c.addAll(['/'])));
+      self.skipWaiting();
+    });
+    self.addEventListener('fetch', e => {
+      e.respondWith(
+        caches.match(e.request).then(r => r || fetch(e.request).catch(() => r))
+      );
+    });
+  `;
+  const swBlob = new Blob([swCode], { type: 'application/javascript' });
+  const swURL = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swURL).catch(() => {});
+}
+// ═══════════════════════════════════════════════════════════
+// ECHOES OF THE UNVOICED — Core Engine + Act I Prototype
+// ═══════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+// ── Resize ──
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Mobile font scale — canvas text requires px units (vw is invalid in ctx.font).
+// On desktop (1920px wide), 1vw = 19.2px. On phone landscape (800px), 1vw = 8px.
+// We convert vw to px based on actual canvas width, then scale up on small screens.
+function getFontScale() {
+  return Math.max(1, 1400 / Math.max(canvas.width, 800));
+}
+function scaledFont(sizeStr) {
+  const scale = getFontScale();
+  // Match leading size token: e.g. "2vw Georgia" or "10px Georgia"
+  return String(sizeStr).replace(/^(\d+\.?\d*)(vw|px)(.*)$/, (m, num, unit, rest) => {
+    let px;
+    if (unit === 'vw') {
+      px = parseFloat(num) * canvas.width / 100 * scale;
+    } else {
+      px = parseFloat(num) * scale;
+    }
+    px = Math.max(8, Math.round(px));
+    return px + 'px' + rest;
+  });
+}
+
+// ── Constants ──
+const TILE = 40;
+const GRAVITY = 0.55;
+const MAX_FALL = 14;
+const WALK_ACCEL = 0.4;
+const RUN_ACCEL = 0.6;
+const MAX_WALK = 3.5;
+const MAX_RUN = 5.5;
+const FRICTION_GROUND = 0.82;
+const FRICTION_AIR = 0.95; // much less friction in air = better diagonal jumps
+const JUMP_FORCE = -14;
+const JUMP_CUT = 0.45;
+const DOUBLE_JUMP_FORCE = -12;
+
+// ── Input ──
+const keys = {};
+let paused = false;
+let mapMode = false;
+let mapCameraX = 0;
+let mapCameraY = 0;
+const MAP_SCROLL_SPEED = 12;
+
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  
+  // ── Priority handlers — checked FIRST before any early returns ──
+  if (gameState === 'stageTransition' && stageTransTimer > 60) {
+    currentStage++;
+    beginStage(currentAct, currentStage);
+    return;
+  }
+  if (gameState === 'tour' && tourReady) {
+    advanceTour();
+    return;
+  }
+  if (gameState === 'win' && winTimer > 240) {
+    const nextAct = currentAct + 1;
+    if (LEVELS[nextAct]) {
+      gameState = 'transition';
+      winTimer = 0;
+      currentStage = 1;
+      setTimeout(() => { showBriefing(nextAct); currentAct = nextAct; }, 500);
+    }
+    return;
+  }
+  if (gameState === 'gameover' && gameOverTimer > 360) {
+    gameOver = false;
+    gameOverTimer = 0;  // reset so next game-over screen starts from beginning
+    act5Attempt = 1;
+    act5Lives = 3;
+    currentStage = 1;
+    gameState = 'transition';
+    setTimeout(() => { showBriefing(5); currentAct = 5; }, 500);
+    return;
+  }
+  
+  if (gameState === 'input' && e.code === 'Enter') {
+    e.preventDefault();
+    submitThought();
+    return;
+  }
+  if (gameState === 'input') return;
+  
+  // Q = Activate Clarity power
+  if (e.code === 'KeyQ' && gameState === 'playing' && !clarityActive && clarityFragments >= CLARITY_FRAGMENTS_NEEDED) {
+    clarityActive = true;
+    clarityTimer = CLARITY_DURATION;
+    clarityFragments = 0;
+    clarityFlashTimer = 20;
+    screenShake = 8;
+    playTone(880, 1.5, 'sine', 0.08);
+    playTone(1320, 1.0, 'sine', 0.05);
+    floatingTexts.push({ x: player.x, y: player.y - 30, text: '✦ CLARITY ✦', life: 90 });
+  }
+  
+  // P = Pause toggle (only during gameplay)
+  if (e.code === 'KeyP' && (gameState === 'playing' || paused)) {
+    paused = !paused;
+    if (paused) {
+      mapMode = false;
+      mapCameraX = camera.x;
+      mapCameraY = camera.y;
+    }
+    return;
+  }
+  
+  // M = Map scroll mode toggle (only while paused)
+  if (e.code === 'KeyM' && paused) {
+    mapMode = !mapMode;
+    if (mapMode) {
+      mapCameraX = camera.x;
+      mapCameraY = camera.y;
+    }
+    return;
+  }
+  
+  // Escape = unpause
+  if (e.code === 'Escape' && paused) {
+    paused = false;
+    mapMode = false;
+    return;
+  }
+  
+  if (paused) return; // Block all other inputs while paused
+  
+  if (gameState === 'title') {
+    startGame();
+  } else if (gameState === 'prologue' && briefingReady) {
+    hidePrologue();
+    briefingReady = false;
+    setTimeout(() => { showInputScreen(); }, 1500);
+  } else if (gameState === 'briefing' && briefingReady) {
+    hideBriefing();
+    briefingReady = false;
+    setTimeout(() => { startTour(currentAct || 1); }, 1200);
+  }
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+// ── Game State ──
+let gameState = 'title';
+let frameCount = 0;
+let screenShake = 0;
+let deathFade = 0;
+let checkpointFlash = 0;
+
+// ── Stage System ──
+let currentAct = 1;
+let currentStage = 1; // 1, 2, or 3 within each act
+
+// ── Clarity Power ──
+let clarityFragments = 0;
+const CLARITY_FRAGMENTS_NEEDED = 5;
+let clarityActive = false;
+let clarityTimer = 0;
+const CLARITY_DURATION = 240; // 4 seconds at 60fps
+const CLARITY_SLOWDOWN = 0.2; // world runs at 20%
+let clarityFlashTimer = 0; // activation flash
+
+// ── Audio System (Web Audio API) ──
+let audioCtx;
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playTone(freq, duration, type = 'sine', volume = 0.1) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function playResonancePulse() {
+  if (!audioCtx) return;
+  // Deep bass hum
+  playTone(55, 1.5, 'sine', 0.2);
+  playTone(82, 1.2, 'sine', 0.1);
+  // Warm overtone
+  setTimeout(() => playTone(220, 0.8, 'triangle', 0.05), 100);
+}
+
+function playDeathSound() {
+  if (!audioCtx) return;
+  playTone(200, 0.5, 'sawtooth', 0.15);
+  setTimeout(() => playTone(100, 0.8, 'sawtooth', 0.1), 100);
+}
+
+function playCheckpointSound() {
+  if (!audioCtx) return;
+  playTone(330, 0.3, 'sine', 0.08);
+  setTimeout(() => playTone(440, 0.3, 'sine', 0.08), 150);
+  setTimeout(() => playTone(550, 0.5, 'sine', 0.06), 300);
+}
+
+function playNightmareChitter(distance) {
+  if (!audioCtx) return;
+  const vol = Math.max(0, 0.12 - distance * 0.0004);
+  if (vol > 0.01) {
+    playTone(800 + Math.random() * 400, 0.05, 'square', vol);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// AMBIENT MUSIC SYSTEM — Procedural Horror Soundscapes
+// ═══════════════════════════════════════════════
+
+let ambientNodes = [];
+let ambientPlaying = false;
+let currentAmbientAct = 0;
+
+function stopAmbient() {
+  ambientNodes.forEach(node => {
+    try {
+      if (node.stop) node.stop();
+      if (node.disconnect) node.disconnect();
+    } catch(e) {}
+  });
+  ambientNodes = [];
+  ambientPlaying = false;
+  currentAmbientAct = 0;
+}
+
+function createNoise(duration, volume = 0.02) {
+  // Filtered noise — the breath of dread
+  const bufferSize = audioCtx.sampleRate * duration;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1);
+  }
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+  const gain = audioCtx.createGain();
+  gain.gain.value = volume;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 200;
+  source.connect(filter).connect(gain).connect(audioCtx.destination);
+  source.start();
+  ambientNodes.push(source, gain, filter);
+  return { source, gain, filter };
+}
+
+function createDrone(freq, type = 'sine', volume = 0.03, detune = 0) {
+  const osc = audioCtx.createOscillator();
+  osc.type = type;
+  osc.frequency.value = freq;
+  osc.detune.value = detune;
+  const gain = audioCtx.createGain();
+  gain.gain.value = volume;
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start();
+  ambientNodes.push(osc, gain);
+  return { osc, gain };
+}
+
+function createLFO(targetParam, rate, depth) {
+  // Low frequency oscillator for slow pulsing/movement
+  const lfo = audioCtx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.value = rate;
+  const lfoGain = audioCtx.createGain();
+  lfoGain.gain.value = depth;
+  lfo.connect(lfoGain).connect(targetParam);
+  lfo.start();
+  ambientNodes.push(lfo, lfoGain);
+  return lfo;
+}
+
+function startAmbient(act) {
+  if (!audioCtx) return;
+  if (currentAmbientAct === act && ambientPlaying) return;
+  stopAmbient();
+  currentAmbientAct = act;
+  ambientPlaying = true;
+
+  if (act === 1) {
+    // ── ACT I: THE DREAM ──
+    // Deep oppressive darkness. Subsonic heartbeat. Distant scratching.
+    
+    // Subsonic drone — you feel it more than hear it
+    const bass = createDrone(30, 'sine', 0.04);
+    createLFO(bass.gain.gain, 0.08, 0.02); // slow pulse like a sleeping giant breathing
+    
+    // Detuned fifth — creates unease
+    createDrone(45, 'sine', 0.02, 7);
+    
+    // Heartbeat — low thud every ~2 seconds
+    const heartbeat = () => {
+      if (!ambientPlaying || currentAmbientAct !== 1) return;
+      playTone(35, 0.15, 'sine', 0.06);
+      setTimeout(() => playTone(30, 0.2, 'sine', 0.04), 200);
+      setTimeout(heartbeat, 2000 + Math.random() * 500);
+    };
+    setTimeout(heartbeat, 1000);
+    
+    // Filtered noise — wind through dead corridors
+    const noise = createNoise(4, 0.015);
+    createLFO(noise.filter.frequency, 0.03, 80); // slowly shifting filter
+    
+    // Occasional distant metallic scrape
+    const scrape = () => {
+      if (!ambientPlaying || currentAmbientAct !== 1) return;
+      if (Math.random() < 0.3) {
+        const f = 800 + Math.random() * 2000;
+        playTone(f, 0.08, 'sawtooth', 0.008);
+      }
+      setTimeout(scrape, 4000 + Math.random() * 6000);
+    };
+    setTimeout(scrape, 3000);
+    
+  } else if (act === 2) {
+    // ── ACT II: PARA ──
+    // Frozen isolation. Crystalline high frequencies. Loneliness.
+    
+    // High glass-like tone — barely there
+    const glass = createDrone(2200, 'sine', 0.008);
+    createLFO(glass.osc.frequency, 0.02, 50);
+    
+    // Hollow mid drone
+    createDrone(110, 'triangle', 0.02);
+    createDrone(165, 'sine', 0.01, -5); // slight detune = beating
+    
+    // Noise — like static from a dead radio
+    const noise = createNoise(4, 0.01);
+    noise.filter.frequency.value = 400;
+    createLFO(noise.gain.gain, 0.05, 0.005);
+    
+    // Lonely ping — like sonar in void
+    const ping = () => {
+      if (!ambientPlaying || currentAmbientAct !== 2) return;
+      playTone(880 + Math.random() * 200, 0.8, 'sine', 0.015);
+      setTimeout(ping, 5000 + Math.random() * 8000);
+    };
+    setTimeout(ping, 2000);
+    
+  } else if (act === 3) {
+    // ── ACT III: PASHYANTI ──
+    // Blinding anxiety. Bright dissonance. Things watching you.
+    
+    // Dissonant cluster — tritone interval (the devil's interval)
+    createDrone(220, 'sine', 0.02);
+    createDrone(311, 'sine', 0.015); // tritone = maximum tension
+    
+    // High whine — like tinnitus
+    const whine = createDrone(3500, 'sine', 0.005);
+    createLFO(whine.osc.frequency, 0.1, 200); // wobbling anxiety
+    
+    // Noise — bright hiss, like overexposed film
+    const noise = createNoise(4, 0.012);
+    noise.filter.type = 'highpass';
+    noise.filter.frequency.value = 2000;
+    
+    // Irregular clicking — like something approaching
+    const click = () => {
+      if (!ambientPlaying || currentAmbientAct !== 3) return;
+      if (Math.random() < 0.4) {
+        playTone(4000 + Math.random() * 2000, 0.02, 'square', 0.01);
+      }
+      setTimeout(click, 300 + Math.random() * 1500);
+    };
+    setTimeout(click, 1000);
+    
+  } else if (act === 4) {
+    // ── ACT IV: MADHYAMA ──
+    // Industrial machinery. Mechanical heartlessness. Bureaucratic grind.
+    
+    // Machine drone — low sawtooth rumble
+    const machine = createDrone(55, 'sawtooth', 0.015);
+    createLFO(machine.gain.gain, 0.5, 0.008); // rhythmic pulsing
+    
+    // Second machine layer — slightly detuned
+    createDrone(55.5, 'sawtooth', 0.01);
+    
+    // Metallic resonance
+    createDrone(440, 'square', 0.003);
+    
+    // Noise — hydraulic hiss
+    const noise = createNoise(4, 0.01);
+    noise.filter.frequency.value = 600;
+    
+    // Mechanical rhythm — like stamping press
+    const stamp = () => {
+      if (!ambientPlaying || currentAmbientAct !== 4) return;
+      playTone(80, 0.05, 'square', 0.03);
+      setTimeout(() => playTone(60, 0.05, 'square', 0.02), 250);
+      setTimeout(stamp, 1200 + Math.random() * 200);
+    };
+    setTimeout(stamp, 500);
+    
+    // Occasional alarm-like sweep
+    const alarm = () => {
+      if (!ambientPlaying || currentAmbientAct !== 4) return;
+      if (Math.random() < 0.2) {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = 600;
+        osc.frequency.linearRampToValueAtTime(900, audioCtx.currentTime + 0.5);
+        const g = audioCtx.createGain();
+        g.gain.value = 0.008;
+        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+        osc.connect(g).connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.6);
+      }
+      setTimeout(alarm, 6000 + Math.random() * 8000);
+    };
+    setTimeout(alarm, 4000);
+    
+  } else if (act === 5) {
+    // ── ACT V: VAIKHARI ──
+    // Pure panic. Rising tension. Everything accelerating.
+    
+    // Rising drone — gets higher over time
+    const rise = createDrone(40, 'sawtooth', 0.02);
+    const riseUp = () => {
+      if (!ambientPlaying || currentAmbientAct !== 5) return;
+      rise.osc.frequency.value = Math.min(rise.osc.frequency.value + 0.1, 200);
+      setTimeout(riseUp, 100);
+    };
+    riseUp();
+    
+    // Rapid heartbeat — much faster than Act I
+    const heart = () => {
+      if (!ambientPlaying || currentAmbientAct !== 5) return;
+      playTone(45, 0.08, 'sine', 0.05);
+      setTimeout(() => playTone(40, 0.1, 'sine', 0.03), 120);
+      setTimeout(heart, 600 + Math.random() * 200); // fast panicked heart
+    };
+    setTimeout(heart, 300);
+    
+    // Noise — roaring wind
+    const noise = createNoise(4, 0.025);
+    noise.filter.frequency.value = 300;
+    createLFO(noise.filter.frequency, 0.3, 150);
+    createLFO(noise.gain.gain, 0.2, 0.01);
+    
+    // Stinging high harmonics — adrenaline
+    createDrone(1800, 'sine', 0.006);
+    const sting = createDrone(2400, 'sine', 0.004);
+    createLFO(sting.osc.frequency, 3, 300); // rapid vibrato = trembling
+    
+    // Rumble crescendo
+    createDrone(25, 'sine', 0.04);
+  }
+}
+
+// Hook into beginStage to start/change ambient music — done inside beginStage itself
+
+// ── Level Data — Act I: The Slums of Exile ──
+// 0=air, 1=solid, 2=platform, 3=crumble, 4=checkpoint, 5=key, 6=exit_door, 7=shell, 8=hazard
+const LEVEL_ACT1 = {
+  name: "The Slums of Exile",
+  bg: { r: 45, g: 35, b: 25 },
+  fog: { r: 60, g: 45, b: 30 },
+  gravity_mod: 0.92, // slightly floaty
+  tiles: [
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000060000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000001111100001",
+    "10000000000000000000000000000000000000000000000000000000000000400001100000000001",
+    "10000000000000000000000000000000000000000000000000000000000001110110000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000001000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000011000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000001100000000000000000001",
+    "10000000000000000000000000000000000000000500000000000000110000000000000000000001",
+    "10000000000000000000000000000000000000011110000000000011000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000100000000000000000000000001",
+    "10000000000000000000000000000000007000000000000030001100000000000000000000000001",
+    "10000000000000000000000000000000011110000011111110110000000000000000000000000001",
+    "10000000000000000000000000000001111001110000111000000000000000000000000000000001",
+    "10000000000000000000000000004000011100000000000000000000000000000000000000000001",
+    "10000000000000000000000000011100000000000000000000000000000000000000000000000001",
+    "10000000000000000000000001100000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000110000000000000000000000000000000000000000000000000000001",
+    "10000000000000000003000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000111100000000000000000000000000000000000000000000000000000000001",
+    "10000000000050001110000000000000000000000000000000000000000000000000000000000001",
+    "10000000000111000000000000000000000000000000000000000000000000000000000000000001",
+    "10000004000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000011130000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10700000000050000000000000000000000000000000000000000000000000000000000000000001",
+    "11111100001111100000000000000000000000000000000000000000000000000000000000000001",
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  ]
+};
+
+// ── Level Data — Act II: Para (The Void) ──
+// 0=air, 1=solid, 2=platform, 3=crumble, 4=checkpoint, 5=key(seed), 6=exit, 9=abyss_bridge(dormant seed, activated by resonance)
+const LEVEL_ACT2 = {
+  name: "Para — The Void",
+  bg: { r: 12, g: 18, b: 30 },
+  fog: { r: 20, g: 30, b: 50 },
+  gravity_mod: 1.0,
+  tiles: [
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000060000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000001111100001",
+    "10000000000000000000000000000000000000000000000000000000000000000000110000000001",
+    "10000000000000000000000000000000000000000000000000000000000004000011000000000001",
+    "10000000000000000000000000000000000000000000000000000000000011109900000000000001",
+    "10000000000000000000000000000000000000000000000000000000001100000000000000000001",
+    "10000000000000000000000000000000000000000000000050000111990000000000000000000001",
+    "10000000000000000000000000000000000000000000000111009900000000000000000000000001",
+    "10000000000000000000000000000000000000000000111000000000000000000000000000000001",
+    "10000000000000000000000000000000000000004000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000011100000000000000000000000000000000000001",
+    "10000000000000000000000000000000000001110000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000099000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000001100000000000000000000000000000000000000000001",
+    "10000000000000000000000000000050990000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000111000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000004000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000011100000000000000000000000000000000000000000000000000001",
+    "10000000000000000000099000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000011000000000000000000000000000000000000000000000000000000000001",
+    "10000000000050099000000011100000000000000000000000000000000000000000000000000001",
+    "10000000001111000000000000000000011100000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10040000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  ]
+};
+
+// ═══ GENERATED LEVELS ═══
+
+const LEVEL_ACT1_S1 = {
+  name: 'The Dream', bg: {r:15,g:12,b:10}, fog: {r:30,g:25,b:20}, gravity_mod: 1.0,
+  tiles: [
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000006000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000111111000001",
+    "10000000000000000000000000000000000000000000000000000000000000I00000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000011111100000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000001111110000000000000000000001",
+    "10000000000000000000000000000000000000000000005000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000111111000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000011711100000000000000000000000000000000000001",
+    "10000000000000000000000000000000I00000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000011111100000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000040000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000001111110000000000000000000000000000000000000000000000000001",
+    "100000000000000000I0000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000001111110000000000000000000000000000000000000000000000000000000001",
+    "10000000000050000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000001111110000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000I0I000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000011111100000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10040000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111110000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  ]
+};
+
+const LEVEL_ACT1_S3 = {
+  name: 'The Dream', bg: {r:15,g:12,b:10}, fog: {r:30,g:25,b:20}, gravity_mod: 1.0,
+  tiles: [
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000006000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000111111000000000000000000000000000000000001",
+    "10000000000000000000000000000050I00000000000000000000000000000000000000000000001",
+    "1000000000000000000000000000111111000000000000000050I000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000011111100000000000000000000000001",
+    "10000000000000000000000000000000000000000I00000000000000000000000000000000000001",
+    "10000000000000000000000000000000000011171111000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000333333000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000333333000000000000000000000001",
+    "10000000000000000000000000000000000000400000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000011111111000000000000000000000000000000000001",
+    "100000000000000000000000I0000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000001111110000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000011111100000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000117111000000000000000000000000000000000001",
+    "1000000000000000I000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000111111000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000011111100000000000001",
+    "10000000000000000000000000000000000000000000000000111000000000000000000000000001",
+    "10000000000000000000000000000000000011111100000000000000000000000000000000000001",
+    "100000000000I0000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000001111110000000000000000000000000000000111000111000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10040000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111110000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  ]
+};
+
+const LEVEL_ACT2_S1 = {
+  name: 'Para', bg: {r:20,g:18,b:25}, fog: {r:35,g:30,b:40}, gravity_mod: 1.0,
+  tiles: [
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000060000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000001111110001",
+    "100000000000000000000000000000000000000000000000000000000000000I0000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000111100000000000001",
+    "10000000000000000000000000000000000000000000000000000050019900000000000000000001",
+    "10000000000000000000000000000000000000000000000000001111000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "1000000000000000000000000000000000000000000000I000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000111100000000000000000000000000000001",
+    "10000000000000000000000000000000000000400999000000000000000000000000000000000001",
+    "10000000000000000000000000000000000011110000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000111000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000500000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000011110000000000000000000000000000000000000000000001",
+    "100000000000000000000000I0099000000000000000000000000000000000000000000000000001",
+    "10000000000000000000001111000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "100000000000000000I0000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000001111000000000000000000000000000000000000000000000000000000000001",
+    "1000000000I009900000000000000000000000000000000000000000000000000000000000000001",
+    "10000000111111000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10040000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111110000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  ]
+};
+
+const LEVEL_ACT2_S3 = {
+  name: 'Para', bg: {r:20,g:18,b:25}, fog: {r:35,g:30,b:40}, gravity_mod: 1.0,
+  tiles: [
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000600000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000011111100000001",
+    "10000000000000000000000000000000000000000000000000000000000000111000000000000001",
+    "1000000000000000000000000000000000000000000000000000000050I099990000000000000001",
+    "10000000000000000000000000000000000000000000000000000011111000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000400000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000011111000000000000000000000000001",
+    "1000000000000000000000000000000000000000I009991000000000000000000000000000000001",
+    "10000000000000000000000000000000000000111110000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000005000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000111111110000000000000000000000000000000000000000001",
+    "10000000000000000000000040I99900000000000000000000000000000000000000000000000001",
+    "10000000000000000000001111100000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "100000000000000000I0000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000001111100000000000000000000000000000000000000000000000000000000001",
+    "1000000000I099000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000111110000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000111110000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10011111000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10040000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111110000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  ]
+};
+
+const LEVEL_ACT3_S1 = {
+  name: 'Pashyanti', bg: {r:240,g:235,b:225}, fog: {r:255,g:250,b:245}, gravity_mod: 1.0,
+  tiles: [
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000600000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000011111100000001",
+    "10000000000000000000000000000000000000000000000000000000000040I00000000000000001",
+    "10000000000000000000000000000000000000000000000000000000001111110000000000000001",
+    "10000000000000000000000000000000000000000000000000000000011100000000000000000001",
+    "10000000000000000000000000000000000000000000000000111111000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000B1111110A000000000000000000000000000001",
+    "10000000000000000000000000000000000000I00000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000011111000000000000000000000000000000000000001",
+    "10000000000000000000000000000000500000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000011111000000000000000000000000000000000000000000001",
+    "1000000000000000000000000040I000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000011111000000000000000000000000000000000000000000000000001",
+    "10000000000000000000I00000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000011111000000000000000000000000000000000000000000000000000000001",
+    "10000000000000500000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000011111000000000000000000000000000000000000000000000000000000000000001",
+    "1000000000I000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000111110000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000111110000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10011111000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10040000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  ]
+};
+
+const LEVEL_ACT4_S1 = {
+  name: 'Madhyama', bg: {r:25,g:22,b:20}, fog: {r:40,g:35,b:30}, gravity_mod: 1.0,
+  tiles: [
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000006000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000111111000001",
+    "1000000000000000000000000000000000000000000000000000000000000000I000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000011711000000000000001",
+    "10000000000000000000000000000000000000000000000000000000400000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000011111000000000000000000001",
+    "1000000000000000000000000000000000000000000000000000I000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000011711000000000000000000000000001",
+    "10000000000000000000000000000000000000000000500000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000011111000000000000000000000000000000001",
+    "1000000000000000000000000000000000000000I000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000011711000000000000000000000000000000000000001",
+    "10000000000000000000000000000000400000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000011111000000000000000000000000000000000000000000001",
+    "10000000000000000000000000I00000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000011111000000000000000000000000000000000000000000000000001",
+    "1000000000000000000050I000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000011111000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000111110000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000001111100000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000011111000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10040000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111110000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  ]
+};
+
+const LEVEL_ACT5_S1 = {
+  name: 'Vaikhari', bg: {r:50,g:20,b:25}, fog: {r:70,g:30,b:35}, gravity_mod: 0.88,
+  tiles: [
+    "11111111111111111111111111111111",
+    "10000000000000060000000000000001",
+    "10000000000001111110000000000001",
+    "10000000000000000000000000000001",
+    "10000111111100000000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000011111110000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000001111111000001",
+    "10000000000000000000000000000001",
+    "10000111111100000000000000000001",
+    "10000000000000400000000000000001",
+    "10000000000011111110000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000001111111000001",
+    "10000000000000000000000000000001",
+    "10000111111100000000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000011111110000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000001111111000001",
+    "10000000000000000000000000000001",
+    "10000111111100000000000000000001",
+    "10000000000000400000000000000001",
+    "10000000000011111110000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000001111111000001",
+    "10000000000000000000000000000001",
+    "10000111111100000000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000011111110000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000001111111000001",
+    "10000000000000000000000000000001",
+    "10000111111100000000000000000001",
+    "10000000000000400000000000000001",
+    "10000000000011111110000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000001111111000001",
+    "10000000000000000000000000000001",
+    "10000111111100000000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000011111110000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000001111111000001",
+    "10000000000000000000000000000001",
+    "10000000000000000000000000000001",
+    "10040000000000000000000000000001",
+    "11111111111111111111111111111111",
+    "11111111111111111111111111111111",
+  ]
+};
+
+
+// ── Level Management ──
+// LEVELS[act][stage] — stage 1 & 2 share intro layout, stage 3 uses harder layout
+// Existing levels (LEVEL_ACT1..5) become stage 3 (hardest)
+const LEVELS = {
+  1: { 1: LEVEL_ACT1_S1, 2: LEVEL_ACT1_S1, 3: LEVEL_ACT1_S3 },
+  2: { 1: LEVEL_ACT2_S1, 2: LEVEL_ACT2_S1, 3: LEVEL_ACT2_S3 },
+};
+
+// ── Act III: Pashyanti — The Propaganda Wing ──
+// Tile types: 0=air, 1=solid, 4=checkpoint, 5=key, 6=exit
+// New: A=light source (10), B=pushable block (11), C=hypnotic statue (12), D=pressure plate (13), E=gate (14)
+const LEVEL_ACT3 = {
+  name: "Pashyanti — The Propaganda Wing",
+  bg: { r: 240, g: 235, b: 225 },
+  fog: { r: 255, g: 250, b: 245 },
+  gravity_mod: 1.0,
+  tiles: [
+    // Act III: Lights (A) BLOCK the path. Push blocks (B) to shield/bridge past lights.
+    // Statues (C) GUARD keys — shatter with resonance to access. 3 keys, 4 lights, 2 statues.
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000600000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000011111100000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000004111110000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000001111100000000000000000000001",
+    "10000000000000000000000000000000000000000000000B1111000A000000000000000000000001",
+    "10000000000000000000000000000000000000000000111110000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "1000000000000000000000000000000000000005C111110000000000000000000000000000000001",
+    "10000000000000000000000000000000000001111100000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "1000000000000000000000000000001111A000000000000000000000000000000000000000000001",
+    "1000000000000000000000000000B111100000000000000000000000000000000000000000000001",
+    "10000000000000000000000000001100000000000000000000000000000000000000000000000001",
+    "10000000000000000000000041111100000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000111110A00000000000000000000000000000000000000000000000000001",
+    "10000000000000001111100000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000011111C50000000000000000000000000000000000000000000000000000000000001",
+    "10000000001111100000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "1000000A111110500000000000000000000000000000000000000000000000000000000000000001",
+    "10000111110000000000000000000000000000000000000000000000000000000000000000000001",
+    "10040000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  ]
+};
+LEVELS[3] = { 1: LEVEL_ACT3_S1, 2: LEVEL_ACT3_S1, 3: LEVEL_ACT3 };
+
+// ── Act IV: Madhyama — The Border of Logic ──
+// F=conveyor_right(15), G=conveyor_left(16), H=gatekeeper_spawn(17), 7=shell
+const LEVEL_ACT4 = {
+  name: "Madhyama — The Border of Logic",
+  bg: { r: 25, g: 22, b: 20 },
+  fog: { r: 40, g: 35, b: 30 },
+  gravity_mod: 1.0,
+  tiles: [
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000060000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000001111100001",
+    "10000000000000000000000000000000000000000000000000000000000000011100110000000001",
+    "10000000000000000000000000000000000000000000000000000000004001100111000000000001",
+    "10000000000000000000000000000000000000000000000000000000011111011100000000000001",
+    "10000000000000000000000000000000000000000000000000000070110000000000000000000001",
+    "10000000000000000000000000000000000000000000000000001111100000000000000000000001",
+    "10000000000000000000000000000000000000050000000000110000000000000000000000000001",
+    "10000000000000000000000000000000000000111107001111000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000110000000000000000000000000000000001",
+    "10000000000000000000000000000000000001110000000000000000000000000000000000000001",
+    "10000000000000000000000000000004000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000011110000000000000000000000000000000000000000000001",
+    "10000000000000000000000000001100070000000000000000000000000000000000000000000001",
+    "10000000000000000000000000011111100000000000000000000000000000000000000000000001",
+    "10000000000000000000000001110000000000000000000000000000000000000000000000000001",
+    "10000000000000000000050000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000001111000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000110000700000000000000000000000000000000000000000000000000000001",
+    "10000000000000001111110000000000000000000000000000000000000000000000000000000001",
+    "10000000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000004000000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000011110000000000000000000000000000000000000000000000000000000000000000001",
+    "10000000110007000000000000000000000000000000000000000000000000000000000000000001",
+    "10000051111011100000000000000000000000000000000000000000000000000000000000000001",
+    "10040000000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111100000000000000000000000000000000000000000000000000000000000000000000000001",
+    "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+  ]
+};
+LEVELS[4] = { 1: LEVEL_ACT4_S1, 2: LEVEL_ACT4_S1, 3: LEVEL_ACT4 };
+
+// ── Act V: Vaikhari — The Trembling Ascent (Vertical Chase) ──
+const LEVEL_ACT5 = {
+  name: "Vaikhari — The Trembling Ascent",
+  bg: { r: 50, g: 20, b: 25 },
+  fog: { r: 70, g: 30, b: 35 },
+  gravity_mod: 0.88,
+  tiles: [
+    // Vertical shaft. Zigzag platforms. Checkpoints ON platforms every ~12 rows.
+    "11111111111111111111111111111111",
+    "10000000000000600000000000000001",
+    "10000000000011111000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000001111000000001",
+    "10000000000000000000000000000001",
+    "10000001111000000000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000001111000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000000011110000001",
+    "10000000000000000000000000000001",
+    "10000000011110000000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000011111000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000000411110000001",
+    "10000000000000000000000000000001",
+    "10000000011110000000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000011110000000000001",
+    "10000000000000000000000000000001",
+    "10000011110000000000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000011111000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000001111000000001",
+    "10000000000000000000000000000001",
+    "10000004111100000000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000011110000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000000011110000001",
+    "10000000000000000000000000000001",
+    "10000001111000000000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000001111000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000001111000000001",
+    "10000000000000000000000000000001",
+    "10000004111100000000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000001111000000000000001",
+    "10000000000000000000000000000001",
+    "10000000000000000000111100000001",
+    "10000000000000000000000000000001",
+    "10000001111000000000000000000001",
+    "10040000000000000000000000000001",
+    "11111111111111111111111111111111",
+    "11111111111111111111111111111111",
+  ]
+};
+LEVELS[5] = { 1: LEVEL_ACT5_S1, 2: LEVEL_ACT5_S1, 3: LEVEL_ACT5 };
+
+// ── Act IV: Conveyor Belts & Gatekeepers ──
+let conveyorTiles = []; // {x, y, dir} — dir: 1=right, -1=left
+let gatekeepers = [];
+
+function spawnAct4Entities() {
+  conveyorTiles = [];
+  gatekeepers = [];
+  
+  for (let y = 0; y < tileMap.length; y++) {
+    for (let x = 0; x < tileMap[0].length; x++) {
+      if (tileMap[y][x] === 15) { // F = conveyor right
+        conveyorTiles.push({ x, y, dir: 1 });
+        // Keep as solid
+        tileMap[y][x] = 1;
+      } else if (tileMap[y][x] === 16) { // G = conveyor left
+        conveyorTiles.push({ x, y, dir: -1 });
+        tileMap[y][x] = 1;
+      }
+    }
+  }
+  
+  // Spawn gatekeepers near shell/conveyor areas
+  gatekeepers = [
+    { x: 15 * TILE, y: 25 * TILE, patrolStart: 10 * TILE, patrolEnd: 22 * TILE, speed: 1.2, facing: 1, scanTimer: 0, scanInterval: 180, scanning: false, scanBeamAlpha: 0 },
+    { x: 38 * TILE, y: 15 * TILE, patrolStart: 30 * TILE, patrolEnd: 45 * TILE, speed: 1.4, facing: 1, scanTimer: 0, scanInterval: 150, scanning: false, scanBeamAlpha: 0 },
+    { x: 55 * TILE, y: 8 * TILE, patrolStart: 48 * TILE, patrolEnd: 62 * TILE, speed: 1.0, facing: 1, scanTimer: 0, scanInterval: 200, scanning: false, scanBeamAlpha: 0 },
+  ];
+}
+
+function updateAct4() {
+  if (currentAct !== 4) return;
+  
+  // Conveyor belt push on player
+  const ptx = Math.floor(player.x / TILE);
+  const pty = Math.floor((player.y + player.h / 2 + 2) / TILE);
+  for (const cv of conveyorTiles) {
+    if (cv.x === ptx && cv.y === pty && player.onGround) {
+      player.vx += cv.dir * 0.8;
+    }
+  }
+  
+  // Gatekeeper AI
+  for (const gk of gatekeepers) {
+    // Patrol
+    if (!gk.scanning) {
+      gk.x += gk.speed * gk.facing;
+      if (gk.x > gk.patrolEnd) { gk.facing = -1; }
+      if (gk.x < gk.patrolStart) { gk.facing = 1; }
+    }
+    
+    // Scan timer
+    gk.scanTimer++;
+    if (gk.scanTimer >= gk.scanInterval) {
+      gk.scanning = true;
+      gk.scanBeamAlpha = 1;
+      gk.scanTimer = 0;
+      playTone(600, 0.3, 'square', 0.06);
+      
+      // Check if player is in scan range and NOT in shell
+      const dx = player.x - gk.x;
+      const dy = player.y - gk.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      
+      if (dist < 250 && !player.dead) {
+        if (!player.inShell) {
+          // Caught! Incinerate
+          killPlayer();
+          screenShake = 15;
+          floatingTexts.push({ x: player.x, y: player.y - 40, text: 'ORIGINALITY DETECTED — INCINERATED', life: 120 });
+          playTone(100, 0.8, 'sawtooth', 0.2);
+        } else {
+          // In shell — safe
+          floatingTexts.push({ x: player.x, y: player.y - 30, text: '...approved.', life: 60 });
+        }
+      }
+    }
+    
+    // Scan visual decay
+    if (gk.scanning) {
+      gk.scanBeamAlpha -= 0.02;
+      if (gk.scanBeamAlpha <= 0) {
+        gk.scanning = false;
+        gk.scanBeamAlpha = 0;
+      }
+    }
+  }
+}
+
+// ── Act V: The Censor Chase ──
+let censorY = 0;
+let censorSpeed = 0;
+let censorActive = false;
+let act5WinTimer = 0;
+let act5Won = false;
+let act5Lives = 3;
+let act5Attempt = 1; // 1, 2, or 3 — game over after attempt 3 fails
+let act5DeathPause = 0; // brief pause after death before respawn
+let gameOver = false;
+
+function initCensor() {
+  censorY = tileMap.length * TILE + 200;
+  censorSpeed = 0.8; // always reset — never carry over speed from previous attempts
+  censorActive = true;
+  act5Won = false;
+  act5WinTimer = 0;
+  act5DeathPause = 0;
+}
+
+function updateAct5() {
+  if (currentAct !== 5 || !censorActive) return;
+  
+  if (act5Won) {
+    act5WinTimer++;
+    if (act5WinTimer > 180) {
+      stopAmbient(); gameState = 'ending';
+    }
+    return;
+  }
+  
+  // Death pause — brief freeze before respawn
+  if (act5DeathPause > 0) {
+    act5DeathPause--;
+    return;
+  }
+  
+  // Censor rises
+  censorSpeed += 0.0008;
+  censorY -= censorSpeed;
+  
+  // Evolution by height
+  const totalHeight = tileMap.length * TILE;
+  const climbProgress = 1 - (player.y / totalHeight);
+  player.evolutionTarget = 12 + climbProgress * 3;
+  if (player.evolutionTarget > player.evolution) {
+    player.evolution = player.evolutionTarget;
+  }
+  
+  // Kill player if censor catches them
+  if (player.y > censorY - 20 && !player.dead) {
+    act5Lives--;
+    killPlayer();
+    
+    if (act5Lives <= 0) {
+      // Out of lives
+      if (act5Attempt >= 3) {
+        // Game over after 3rd attempt
+        censorActive = false;
+        setTimeout(() => {
+          gameOver = true;
+          stopAmbient(); gameState = 'gameover';
+        }, 1500);
+      } else {
+        // Restart Act V from briefing, preserve checkpoint on final attempt
+        act5Attempt++;
+        act5Lives = 3;
+        censorActive = false;
+        const savedCheckX = player.checkpointX;
+        const savedCheckY = player.checkpointY;
+        const savedEvo = player.evolution;
+        const nextAttempt = act5Attempt;
+        floatingTexts.push({ x: player.x, y: player.y - 40, text: 'The censor devours you...', life: 120 });
+        setTimeout(() => {
+          showBriefing(5);
+          currentAct = 5;
+          // On attempt 3 (final), start from last checkpoint reached
+          if (nextAttempt === 3) {
+            player.checkpointX = savedCheckX;
+            player.checkpointY = savedCheckY;
+            player.evolution = savedEvo;
+            player.evolutionTarget = savedEvo;
+          }
+        }, 2000);
+      }
+    } else {
+      floatingTexts.push({ x: player.x, y: player.y - 40, text: `SILENCED — ${act5Lives} ${act5Lives === 1 ? 'chance' : 'chances'} left`, life: 120 });
+      // Reset censor below player checkpoint to give breathing room
+      act5DeathPause = 90; // 1.5 second pause
+    }
+  }
+  
+  // Check if player reached the exit (top)
+  const pty = Math.floor(player.y / TILE);
+  const ptx = Math.floor(player.x / TILE);
+  if (pty >= 0 && pty < tileMap.length && ptx >= 0 && ptx < tileMap[0].length) {
+    if (tileMap[pty][ptx] === 6) {
+      act5Won = true;
+      censorActive = false;
+      screenShake = 25;
+      playTone(55, 3, 'sine', 0.3);
+      playTone(110, 2.5, 'sine', 0.2);
+    }
+  }
+}
+
+// ── Ending Sequence ──
+let endingTimer = 0;
+
+function updateEnding() {
+  endingTimer++;
+}
+
+function drawEnding() {
+  // NOTE: endingTimer is incremented by updateEnding() — do NOT increment here too.
+  // Phase timing
+  const phase1End = 120;   // White flash
+  const phase2End = 280;   // Fade to black
+  const phase3End = 400;   // Silhouette rises
+  const phase4End = 520;   // Speech bubble with player's words
+  const phase5End = 700;   // "He has become Vyakti"
+  
+  if (endingTimer <= phase1End) {
+    // White flash — the breakthrough
+    const alpha = Math.min(1, endingTimer / 60);
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else if (endingTimer <= phase2End) {
+    // Fade from white to warm black
+    const t = (endingTimer - phase1End) / (phase2End - phase1End);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = `rgba(10,8,5,${t})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else {
+    // Black with silhouette scene
+    ctx.fillStyle = '#0a0805';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const cx = canvas.width / 2;
+    const groundY = canvas.height * 0.72;
+    
+    // Play breath sound once
+    if (endingTimer === phase2End + 30 && audioCtx) {
+      const bufferSize = audioCtx.sampleRate * 2;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        const t = i / audioCtx.sampleRate;
+        const env = Math.sin(t / 2 * Math.PI) * 0.12;
+        data[i] = (Math.random() * 2 - 1) * env * (0.3 + 0.7 * Math.sin(t * 3));
+      }
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 600;
+      source.connect(filter).connect(audioCtx.destination);
+      source.start();
+    }
+    
+    // Silhouette — starts crouched, slowly stands up
+    const riseT = Math.min(1, Math.max(0, (endingTimer - phase2End) / (phase3End - phase2End)));
+    const riseEase = riseT < 0.5 ? 2 * riseT * riseT : 1 - Math.pow(-2 * riseT + 2, 2) / 2; // ease in-out
+    
+    // Warm glow behind the figure
+    const glowAlpha = riseEase * 0.3;
+    const grd = ctx.createRadialGradient(cx, groundY - 60, 10, cx, groundY - 60, 200);
+    grd.addColorStop(0, `rgba(212,160,86,${glowAlpha})`);
+    grd.addColorStop(0.5, `rgba(212,160,86,${glowAlpha * 0.3})`);
+    grd.addColorStop(1, 'rgba(212,160,86,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(cx, groundY - 60, 200, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Ground line
+    ctx.strokeStyle = `rgba(212,160,86,${riseEase * 0.15})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 150, groundY);
+    ctx.lineTo(cx + 150, groundY);
+    ctx.stroke();
+    
+    // Figure — silhouette that rises from crouched to standing
+    const figureHeight = 80 + riseEase * 60; // crouched ~80, standing ~140
+    const headY = groundY - figureHeight;
+    const shoulderY = headY + 25;
+    const crouchBend = (1 - riseEase) * 20; // lean forward when crouched
+    
+    ctx.fillStyle = `rgba(20,15,10,${0.3 + riseEase * 0.7})`;
+    
+    // Head
+    ctx.beginPath();
+    ctx.arc(cx + crouchBend, headY, 12, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Body
+    ctx.beginPath();
+    ctx.moveTo(cx + crouchBend - 12, shoulderY);
+    ctx.lineTo(cx + crouchBend + 12, shoulderY);
+    ctx.lineTo(cx + 10, groundY);
+    ctx.lineTo(cx - 10, groundY);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Arms — rise from hanging to slightly raised
+    const armRaise = riseEase * 0.3;
+    ctx.strokeStyle = `rgba(20,15,10,${0.3 + riseEase * 0.7})`;
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    // Left arm
+    ctx.beginPath();
+    ctx.moveTo(cx + crouchBend - 10, shoulderY + 5);
+    ctx.lineTo(cx - 25 + crouchBend, shoulderY + 30 - armRaise * 40);
+    ctx.stroke();
+    // Right arm
+    ctx.beginPath();
+    ctx.moveTo(cx + crouchBend + 10, shoulderY + 5);
+    ctx.lineTo(cx + 25 + crouchBend, shoulderY + 30 - armRaise * 40);
+    ctx.stroke();
+    
+    // Legs
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, groundY - 5);
+    ctx.lineTo(cx - 12, groundY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 5, groundY - 5);
+    ctx.lineTo(cx + 12, groundY);
+    ctx.stroke();
+    
+    // Inner light — the core glow that was your voice, now inside a person
+    const coreGlow = riseEase * (0.4 + Math.sin(endingTimer * 0.03) * 0.1);
+    const coreGrd = ctx.createRadialGradient(cx + crouchBend, shoulderY - 5, 3, cx + crouchBend, shoulderY - 5, 25);
+    coreGrd.addColorStop(0, `rgba(212,160,86,${coreGlow})`);
+    coreGrd.addColorStop(1, 'rgba(212,160,86,0)');
+    ctx.fillStyle = coreGrd;
+    ctx.beginPath();
+    ctx.arc(cx + crouchBend, shoulderY - 5, 25, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // The player's words — appear after standing
+    if (endingTimer > phase3End) {
+      const speechT = Math.min(1, (endingTimer - phase3End) / (phase4End - phase3End));
+      const speechEase = 1 - Math.pow(1 - speechT, 3);
+      
+      // Speech emanating from the figure
+      const speechY = headY - 30 - speechEase * 20;
+      
+      // Soft glow behind text
+      const textGrd = ctx.createRadialGradient(cx, speechY, 10, cx, speechY, 150);
+      textGrd.addColorStop(0, `rgba(212,160,86,${speechEase * 0.08})`);
+      textGrd.addColorStop(1, 'rgba(212,160,86,0)');
+      ctx.fillStyle = textGrd;
+      ctx.beginPath();
+      ctx.arc(cx, speechY, 150, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // The player's own words — trembling slightly at first
+      const tremble = speechT < 0.5 ? Math.sin(endingTimer * 0.4) * (1 - speechT) * 2 : 0;
+      ctx.fillStyle = `rgba(212,160,86,${speechEase * 0.9})`;
+      ctx.font = scaledFont(`${1.2 + speechEase * 0.3}vw Georgia`);
+      ctx.textAlign = 'center';
+      
+      // Word wrap the player's thought
+      const words = ('"' + playerThought + '"').split(' ');
+      let lines = [];
+      let currentLine = '';
+      const maxW = canvas.width * 0.5;
+      for (const word of words) {
+        const test = currentLine ? currentLine + ' ' + word : word;
+        if (ctx.measureText(test).width > maxW && currentLine) {
+          lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = test;
+        }
+      }
+      lines.push(currentLine);
+      
+      for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], cx + tremble, speechY + i * 30);
+      }
+    }
+    
+    // "He has become Vyakti" — the final declaration
+    if (endingTimer > phase4End) {
+      const vyaktiT = Math.min(1, (endingTimer - phase4End) / 80);
+      ctx.fillStyle = `rgba(212,160,86,${vyaktiT})`;
+      ctx.font = scaledFont('2.2vw Georgia');
+      ctx.textAlign = 'center';
+      ctx.fillText('He has become Vyakti.', cx, groundY + 60);
+      
+      // Subtitle
+      if (vyaktiT > 0.5) {
+        ctx.fillStyle = `rgba(120,100,60,${(vyaktiT - 0.5) * 2 * 0.5})`;
+        ctx.font = scaledFont('0.8vw Georgia');
+        ctx.fillText('व्यक्ति — one who has expressed', cx, groundY + 90);
+      }
+    }
+    
+    // Credits
+    if (endingTimer > phase5End) {
+      const creditAlpha = Math.min(1, (endingTimer - phase5End) / 120);
+      ctx.fillStyle = `rgba(100,80,50,${creditAlpha * 0.4})`;
+      ctx.font = scaledFont('0.75vw Georgia');
+      ctx.textAlign = 'center';
+      ctx.fillText('ECHOES OF THE UNVOICED', cx, groundY + 140);
+      ctx.fillStyle = `rgba(80,60,40,${creditAlpha * 0.3})`;
+      ctx.font = scaledFont('0.6vw Georgia');
+      ctx.fillText('A journey from silence to speech', cx, groundY + 165);
+    }
+  }
+}
+
+// ── Act III Systems: Light sources, Shadow Giant, Pushable Blocks, Hypnotic Statues ──
+let lightSources = [];
+let pushableBlocks = [];
+let hypnoticStatues = [];
+let shadowGiant = { active: false, x: 0, y: 0, scaleX: 1, scaleY: 1, crushing: false, crushTimer: 0 };
+let playerSlowed = false;
+
+function spawnAct3Entities() {
+  lightSources = [];
+  pushableBlocks = [];
+  hypnoticStatues = [];
+  
+  // Read entity positions from the currently loaded tileMap (set by loadLevel),
+  // not hardcoded to LEVEL_ACT3 — this makes stage 1/2 use their own layouts.
+  for (let y = 0; y < tileMap.length; y++) {
+    for (let x = 0; x < tileMap[y].length; x++) {
+      const t = tileMap[y][x];
+      if (t === 10) { // A = light source
+        lightSources.push({ x: x * TILE + TILE/2, y: y * TILE + TILE/2, radius: 180, intensity: 1 });
+        tileMap[y][x] = 0;
+      } else if (t === 11) { // B = pushable block
+        pushableBlocks.push({ x: x * TILE, y: y * TILE, w: TILE, h: TILE, vx: 0 });
+        tileMap[y][x] = 0;
+      } else if (t === 12) { // C = hypnotic statue
+        hypnoticStatues.push({ x: x * TILE + TILE/2, y: y * TILE + TILE/2, alive: true, shimmer: 0 });
+        tileMap[y][x] = 0;
+      }
+    }
+  }
+}
+
+function isPlayerInLight() {
+  // Check if player is exposed to any unblocked light source
+  for (const light of lightSources) {
+    const dx = player.x - light.x;
+    const dy = player.y - light.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > light.radius) continue;
+    
+    // Check if any pushable block is between player and light
+    let blocked = false;
+    for (const block of pushableBlocks) {
+      // Simple ray-box check
+      const bCenterX = block.x + block.w / 2;
+      const bCenterY = block.y + block.h / 2;
+      // Is block roughly between light and player?
+      const lightToPlayer = Math.sqrt(dx * dx + dy * dy);
+      const lightToBlock = Math.sqrt((bCenterX - light.x) ** 2 + (bCenterY - light.y) ** 2);
+      const blockToPlayer = Math.sqrt((player.x - bCenterX) ** 2 + (player.y - bCenterY) ** 2);
+      
+      if (lightToBlock < lightToPlayer && lightToBlock + blockToPlayer < lightToPlayer + TILE) {
+        // Check angular alignment
+        const angleToPlayer = Math.atan2(dy, dx);
+        const angleToBlock = Math.atan2(bCenterY - light.y, bCenterX - light.x);
+        if (Math.abs(angleToPlayer - angleToBlock) < 0.25) {
+          blocked = true;
+          break;
+        }
+      }
+    }
+    
+    if (!blocked) return { inLight: true, lightX: light.x, lightY: light.y };
+  }
+  return { inLight: false };
+}
+
+function updateAct3() {
+  if (currentAct !== 3) return;
+  
+  // Update pushable blocks (player push)
+  for (const block of pushableBlocks) {
+    const dx = player.x - (block.x + block.w / 2);
+    const dy = player.y - (block.y + block.h / 2);
+    const overlap = Math.abs(dx) < (player.w / 2 + block.w / 2 + 2) && Math.abs(dy) < (player.h / 2 + block.h / 2);
+    
+    if (overlap && Math.abs(dy) < block.h / 2) {
+      if (dx < 0 && player.vx > 0) {
+        block.vx = player.vx * 0.5;
+      } else if (dx > 0 && player.vx < 0) {
+        block.vx = player.vx * 0.5;
+      }
+    }
+    
+    block.x += block.vx;
+    block.vx *= 0.85;
+    
+    // Block collision with walls
+    const bRight = block.x + block.w;
+    const bBottom = block.y + block.h;
+    if (isSolid(bRight, block.y + 5) || isSolid(bRight, bBottom - 5)) {
+      block.x = Math.floor(bRight / TILE) * TILE - block.w;
+      block.vx = 0;
+    }
+    if (isSolid(block.x, block.y + 5) || isSolid(block.x, bBottom - 5)) {
+      block.x = Math.ceil(block.x / TILE) * TILE;
+      block.vx = 0;
+    }
+    
+    // Block gravity
+    if (!isSolid(block.x + 5, bBottom + 1) && !isSolid(bRight - 5, bBottom + 1)) {
+      block.y += 3;
+    } else {
+      block.y = Math.floor(bBottom / TILE) * TILE - block.h;
+    }
+  }
+  
+  // Shadow giant — appears when player is in direct light
+  const lightCheck = isPlayerInLight();
+  if (lightCheck.inLight && !player.dead && !player.inShell) {
+    shadowGiant.active = true;
+    // Shadow extends away from light
+    const dx = player.x - lightCheck.lightX;
+    const dy = player.y - lightCheck.lightY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const norm = dist > 0 ? { x: dx / dist, y: dy / dist } : { x: 0, y: 1 };
+    shadowGiant.x = player.x + norm.x * 60;
+    shadowGiant.y = player.y + norm.y * 40;
+    shadowGiant.scaleX = 2 + (1 - dist / 200) * 3;
+    shadowGiant.scaleY = 3 + (1 - dist / 200) * 4;
+    
+    // Shadow crushes after lingering too long
+    shadowGiant.crushTimer++;
+    if (shadowGiant.crushTimer > 180) { // 3 seconds in light = death
+      shadowGiant.crushing = true;
+      killPlayer();
+      floatingTexts.push({ x: player.x, y: player.y - 40, text: 'Consumed by shadow', life: 120 });
+      shadowGiant.crushTimer = 0;
+    }
+  } else {
+    shadowGiant.active = false;
+    shadowGiant.crushTimer = Math.max(0, shadowGiant.crushTimer - 2);
+    shadowGiant.crushing = false;
+  }
+  
+  // Hypnotic statues — slow player when nearby
+  playerSlowed = false;
+  for (const statue of hypnoticStatues) {
+    if (!statue.alive) continue;
+    statue.shimmer += 0.05;
+    const dx = player.x - statue.x;
+    const dy = player.y - statue.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    if (dist < 150) {
+      playerSlowed = true;
+      player.vx *= 0.7; // slow down
+      
+      // Resonance shatters statues
+      if (player.resonanceActive && dist < player.resonanceRadius) {
+        statue.alive = false;
+        screenShake = 10;
+        playTone(200, 0.4, 'sawtooth', 0.1);
+        playTone(150, 0.6, 'sawtooth', 0.08);
+        for (let i = 0; i < 20; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          spawnParticle(statue.x, statue.y,
+            Math.cos(angle) * (2 + Math.random() * 3),
+            Math.sin(angle) * (2 + Math.random() * 3) - 2,
+            40 + Math.random() * 30,
+            `rgba(220,210,200,`, 3 + Math.random() * 4
+          );
+        }
+        floatingTexts.push({ x: statue.x, y: statue.y - 30, text: 'Illusion shattered — the path clears', life: 120 });
+      }
+    }
+    
+    // Ambient hum
+    if (dist < 200 && frameCount % 40 === 0) {
+      playTone(180 + Math.sin(statue.shimmer) * 20, 0.3, 'sine', Math.max(0, 0.04 - dist * 0.0002));
+    }
+  }
+}
+
+// ── Searchlights (Act II enemies) ──
+let searchlights = [];
+
+function spawnSearchlights() {
+  searchlights = [
+    { x: 20 * TILE, y: 15 * TILE, angle: 0, speed: 0.008, range: 350, pivotDir: 1 },
+    { x: 38 * TILE, y: 10 * TILE, angle: Math.PI, speed: 0.01, range: 300, pivotDir: -1 },
+    { x: 55 * TILE, y: 7 * TILE, angle: 0.5, speed: 0.012, range: 320, pivotDir: 1 },
+  ];
+}
+
+// ── Dormant Seeds (Act II — activated by resonance, tile type 9) ──
+let activatedSeeds = {};
+
+function isActivatedSeed(x, y) {
+  return activatedSeeds[`${x},${y}`] !== undefined;
+}
+
+function activateSeedsInRange(px, py, radius) {
+  const startTX = Math.floor((px - radius) / TILE);
+  const endTX = Math.ceil((px + radius) / TILE);
+  const startTY = Math.floor((py - radius) / TILE);
+  const endTY = Math.ceil((py + radius) / TILE);
+  for (let ty = startTY; ty <= endTY; ty++) {
+    for (let tx = startTX; tx <= endTX; tx++) {
+      if (ty >= 0 && ty < tileMap.length && tx >= 0 && tx < tileMap[0].length) {
+        if (tileMap[ty][tx] === 9 && !isActivatedSeed(tx, ty)) {
+          const dist = Math.sqrt((tx * TILE + TILE/2 - px) ** 2 + (ty * TILE + TILE/2 - py) ** 2);
+          if (dist < radius) {
+            activatedSeeds[`${tx},${ty}`] = { timer: 360, x: tx, y: ty }; // 6 sec active
+            spawnParticle(tx * TILE + 20, ty * TILE + 20, 0, -1, 40, `rgba(100,160,220,`, 4);
+            playTone(330 + tx * 5, 0.4, 'sine', 0.06);
+          }
+        }
+      }
+    }
+  }
+}
+let tileMap = [];
+let particles = [];
+let floatingTexts = [];
+
+function loadLevel(data) {
+  level = data;
+  tileMap = [];
+  const charMap = { 'A': 10, 'B': 11, 'C': 12, 'D': 13, 'E': 14, 'F': 15, 'G': 16, 'H': 17, 'I': 18 };
+  for (let y = 0; y < data.tiles.length; y++) {
+    tileMap[y] = [];
+    for (let x = 0; x < data.tiles[y].length; x++) {
+      const ch = data.tiles[y][x];
+      tileMap[y][x] = charMap[ch] !== undefined ? charMap[ch] : parseInt(ch);
+    }
+  }
+}
+
+function getTile(x, y) {
+  const tx = Math.floor(x / TILE);
+  const ty = Math.floor(y / TILE);
+  if (ty < 0 || ty >= tileMap.length || tx < 0 || tx >= tileMap[0].length) return 1;
+  return tileMap[ty][tx];
+}
+
+function isSolid(x, y) {
+  const t = getTile(x, y);
+  if (t === 1) return true;
+  // Activated seed bridges are solid
+  if (t === 9) {
+    const tx = Math.floor(x / TILE);
+    const ty = Math.floor(y / TILE);
+    return isActivatedSeed(tx, ty);
+  }
+  return false;
+}
+
+// ── Player ──
+const player = {
+  x: 3 * TILE, y: 27 * TILE,
+  w: 16, h: 28,
+  vx: 0, vy: 0,
+  onGround: false,
+  facing: 1,
+  // Resonance
+  resonanceActive: false,
+  resonanceRadius: 0,
+  resonanceCooldown: 0,
+  resonanceMaxRadius: 250,
+  // Shell
+  inShell: false,
+  shellTransition: 0,
+  // State
+  dead: false,
+  keys: 0,
+  keysNeeded: 3,
+  // Jump
+  canDoubleJump: true,
+  hasDoubleJumped: false,
+  // Evolution — total progress across all acts (0-15)
+  evolution: 0,
+  evolutionTarget: 0, // smooth transition target
+  evolutionVisual: 0, // smoothly interpolated for rendering
+  // Glow
+  glowPhase: 0,
+  // Checkpoint
+  checkpointX: 3 * TILE,
+  checkpointY: 27 * TILE,
+  // Crumble tracking
+  crumbleTiles: {},
+};
+
+// ── Nightmares (Spider enemies) ──
+let nightmares = [];
+
+function spawnNightmares() {
+  nightmares = [
+    {
+      x: 12 * TILE, y: 24 * TILE,
+      waypoints: [{ x: 8 * TILE, y: 24 * TILE }, { x: 18 * TILE, y: 24 * TILE }],
+      wpIndex: 0, wpDir: 1,
+      speed: 1.2,
+      visionAngle: 0, visionRange: 180, visionCone: Math.PI / 3,
+      alerted: false, alertTimer: 0,
+      facing: 1, legPhase: 0
+    },
+    {
+      x: 28 * TILE, y: 18 * TILE,
+      waypoints: [{ x: 24 * TILE, y: 18 * TILE }, { x: 35 * TILE, y: 18 * TILE }],
+      wpIndex: 0, wpDir: 1,
+      speed: 1.5,
+      visionAngle: 0, visionRange: 200, visionCone: Math.PI / 3,
+      alerted: false, alertTimer: 0,
+      facing: 1, legPhase: 0
+    },
+    {
+      x: 45 * TILE, y: 13 * TILE,
+      waypoints: [{ x: 40 * TILE, y: 13 * TILE }, { x: 52 * TILE, y: 13 * TILE }],
+      wpIndex: 0, wpDir: 1,
+      speed: 1.0,
+      visionAngle: 0, visionRange: 160, visionCone: Math.PI / 4,
+      alerted: false, alertTimer: 0,
+      facing: 1, legPhase: 0
+    },
+    {
+      x: 65 * TILE, y: 6 * TILE,
+      waypoints: [{ x: 58 * TILE, y: 6 * TILE }, { x: 72 * TILE, y: 6 * TILE }],
+      wpIndex: 0, wpDir: 1,
+      speed: 1.3,
+      visionAngle: 0, visionRange: 190, visionCone: Math.PI / 3.5,
+      alerted: false, alertTimer: 0,
+      facing: 1, legPhase: 0
+    },
+  ];
+}
+
+// ── Camera ──
+const camera = { x: 0, y: 0 };
+
+function updateCamera() {
+  const targetX = player.x - canvas.width / 2;
+  const targetY = player.y - canvas.height / 2;
+  camera.x += (targetX - camera.x) * 0.06;
+  camera.y += (targetY - camera.y) * 0.06;
+  // Clamp
+  const maxX = tileMap[0].length * TILE - canvas.width;
+  const maxY = tileMap.length * TILE - canvas.height;
+  camera.x = Math.max(0, Math.min(camera.x, maxX));
+  camera.y = Math.max(0, Math.min(camera.y, maxY));
+}
+
+// ── Particle System ──
+function spawnParticle(x, y, vx, vy, life, color, size) {
+  particles.push({ x, y, vx, vy, life, maxLife: life, color, size });
+}
+
+function spawnDust(x, y) {
+  for (let i = 0; i < 5; i++) {
+    spawnParticle(
+      x + Math.random() * 20 - 10, y,
+      Math.random() * 2 - 1, -Math.random() * 2,
+      40 + Math.random() * 30,
+      `rgba(120,95,60,`, 2 + Math.random() * 3
+    );
+  }
+}
+
+function spawnResonanceParticles(x, y) {
+  for (let i = 0; i < 20; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 3;
+    spawnParticle(
+      x, y,
+      Math.cos(angle) * speed, Math.sin(angle) * speed,
+      60 + Math.random() * 40,
+      `rgba(212,160,86,`, 2 + Math.random() * 4
+    );
+  }
+}
+
+function spawnKeyParticles(x, y) {
+  for (let i = 0; i < 30; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 4;
+    spawnParticle(
+      x, y,
+      Math.cos(angle) * speed, Math.sin(angle) * speed,
+      50 + Math.random() * 50,
+      `rgba(255,220,100,`, 3 + Math.random() * 4
+    );
+  }
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.02;
+    p.life--;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+// ── Player Update ──
+function updatePlayer() {
+  if (player.dead) {
+    deathFade += 0.03;
+    if (deathFade >= 1) respawn();
+    return;
+  }
+
+  const gMod = level ? level.gravity_mod : 1;
+  player.glowPhase += 0.04;
+  
+  // Smooth evolution visual transition
+  player.evolutionVisual += (player.evolutionTarget - player.evolutionVisual) * 0.02;
+
+  // Shell transition
+  if (player.inShell) {
+    player.shellTransition = Math.min(1, player.shellTransition + 0.08);
+  } else {
+    player.shellTransition = Math.max(0, player.shellTransition - 0.08);
+  }
+
+  // Movement
+  const accel = keys['ShiftLeft'] || keys['ShiftRight'] ? RUN_ACCEL : WALK_ACCEL;
+  const maxSpd = (keys['ShiftLeft'] || keys['ShiftRight'] ? MAX_RUN : MAX_WALK) * (player.inShell ? 0.4 : 1);
+  const airBoost = player.onGround ? 1 : 1.1; // slightly more responsive in air
+
+  if (keys['ArrowLeft'] || keys['KeyA']) {
+    player.vx -= accel * airBoost;
+    player.facing = -1;
+  }
+  if (keys['ArrowRight'] || keys['KeyD']) {
+    player.vx += accel * airBoost;
+    player.facing = 1;
+  }
+
+  player.vx *= player.onGround ? FRICTION_GROUND : FRICTION_AIR;
+  if (Math.abs(player.vx) > maxSpd) player.vx = Math.sign(player.vx) * maxSpd;
+  if (Math.abs(player.vx) < 0.1) player.vx = 0;
+
+  // Jump & Double Jump
+  const jumpPressed = keys['Space'] || keys['ArrowUp'] || keys['KeyW'];
+  if (jumpPressed && !player._jumpHeld && !player.inShell) {
+    if (player.onGround) {
+      // First jump
+      player.vy = JUMP_FORCE * gMod;
+      player.onGround = false;
+      player.hasDoubleJumped = false;
+      spawnDust(player.x, player.y + player.h / 2);
+      playTone(180, 0.15, 'sine', 0.05);
+    } else if (player.canDoubleJump && !player.hasDoubleJumped) {
+      // Double jump
+      player.vy = DOUBLE_JUMP_FORCE * gMod;
+      player.hasDoubleJumped = true;
+      // Visual burst for double jump
+      for (let i = 0; i < 10; i++) {
+        const angle = Math.PI * 0.3 + Math.random() * Math.PI * 0.4; // downward burst
+        spawnParticle(
+          player.x, player.y + player.h / 2,
+          Math.cos(angle) * (1 + Math.random() * 2),
+          Math.sin(angle) * (1 + Math.random() * 2),
+          25 + Math.random() * 20,
+          `rgba(212,160,86,`, 2 + Math.random() * 3
+        );
+      }
+      playTone(260, 0.12, 'sine', 0.06);
+      playTone(390, 0.1, 'triangle', 0.04);
+    }
+  }
+  player._jumpHeld = jumpPressed;
+
+  // Variable jump height (release to cut short)
+  if (!jumpPressed && player.vy < 0) {
+    player.vy *= JUMP_CUT;
+  }
+
+  // Gravity
+  player.vy += GRAVITY * gMod;
+  if (player.vy > MAX_FALL) player.vy = MAX_FALL;
+
+  // Resonance
+  if (player.resonanceCooldown > 0) player.resonanceCooldown--;
+  if (keys['KeyE'] && !player.resonanceActive && player.resonanceCooldown <= 0 && !player.inShell) {
+    player.resonanceActive = true;
+    player.resonanceRadius = 0;
+    player.resonanceCooldown = 180; // 3 sec at 60fps
+    playResonancePulse();
+    spawnResonanceParticles(player.x, player.y);
+  }
+  if (player.resonanceActive) {
+    player.resonanceRadius += 4;
+    // Activate dormant seeds in Act II
+    if (currentAct === 2) {
+      activateSeedsInRange(player.x, player.y, player.resonanceRadius);
+    }
+    if (player.resonanceRadius > player.resonanceMaxRadius) {
+      player.resonanceActive = false;
+      player.resonanceRadius = 0;
+    }
+  }
+
+  // Shell interaction
+  if (keys['KeyF'] && !player._fPressed) {
+    player._fPressed = true;
+    if (player.inShell) {
+      player.inShell = false;
+      playTone(300, 0.2, 'triangle', 0.06);
+    } else {
+      // Check for nearby shell tile
+      const px = Math.floor(player.x / TILE);
+      const py = Math.floor(player.y / TILE);
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (getTile((px + dx) * TILE, (py + dy) * TILE) === 7) {
+            player.inShell = true;
+            playTone(120, 0.3, 'sawtooth', 0.06);
+            break;
+          }
+        }
+        if (player.inShell) break;
+      }
+    }
+  }
+  if (!keys['KeyF']) player._fPressed = false;
+
+  // Horizontal collision
+  const newX = player.x + player.vx;
+  const halfW = player.w / 2;
+  const halfH = player.h / 2;
+
+  if (!isSolid(newX - halfW, player.y - halfH) &&
+      !isSolid(newX + halfW, player.y - halfH) &&
+      !isSolid(newX - halfW, player.y + halfH - 1) &&
+      !isSolid(newX + halfW, player.y + halfH - 1)) {
+    player.x = newX;
+  } else {
+    // ── LEDGE GRAB ── If airborne and hitting a wall, check if top of platform is within reach
+    if (!player.onGround && !player.inShell && player.vy >= 0) {
+      // Check which side we're hitting
+      const checkX = player.vx > 0 ? newX + halfW : newX - halfW;
+      // Find the tile we're colliding with
+      const wallTX = Math.floor(checkX / TILE);
+      const playerTY = Math.floor(player.y / TILE);
+      
+      // Check if the tile above the wall is empty (ledge top)
+      if (wallTX >= 0 && wallTX < (tileMap[0] ? tileMap[0].length : 0) &&
+          playerTY >= 0 && playerTY < tileMap.length) {
+        const aboveEmpty = playerTY > 0 && !isSolid(wallTX * TILE + TILE/2, (playerTY - 1) * TILE + TILE/2);
+        const wallSolid = isSolid(wallTX * TILE + TILE/2, playerTY * TILE + TILE/2);
+        
+        // Player's top half must be roughly at or above the platform top
+        const platformTopY = playerTY * TILE;
+        const playerCenterY = player.y;
+        const withinGrabRange = playerCenterY > platformTopY - TILE && playerCenterY < platformTopY + TILE * 0.8;
+        
+        if (aboveEmpty && wallSolid && withinGrabRange) {
+          // Ledge grab — snap player to top of platform
+          player.x = player.vx > 0 ? wallTX * TILE - halfW - 1 : (wallTX + 1) * TILE + halfW + 1;
+          player.y = platformTopY - halfH;
+          player.vy = 0;
+          player.vx = 0;
+          player.onGround = true;
+          player.hasDoubleJumped = false;
+          
+          // Visual feedback
+          spawnDust(player.x, player.y + halfH);
+          floatingTexts.push({ x: player.x, y: player.y - 25, text: '↑', life: 30 });
+        }
+      }
+    }
+    player.vx = 0;
+  }
+
+  // Vertical collision
+  player.onGround = false;
+  const newY = player.y + player.vy;
+
+  if (player.vy > 0) {
+    if (isSolid(player.x - halfW + 2, newY + halfH) ||
+        isSolid(player.x + halfW - 2, newY + halfH)) {
+      player.y = Math.floor((newY + halfH) / TILE) * TILE - halfH;
+      player.vy = 0;
+      player.onGround = true;
+      player.hasDoubleJumped = false;
+      if (Math.abs(player.vx) > 0.5) spawnDust(player.x, player.y + halfH);
+    } else {
+      player.y = newY;
+    }
+  } else if (player.vy < 0) {
+    if (isSolid(player.x - halfW + 2, newY - halfH) ||
+        isSolid(player.x + halfW - 2, newY - halfH)) {
+      player.y = Math.floor((newY - halfH) / TILE) * TILE + TILE + halfH;
+      player.vy = 0;
+    } else {
+      player.y = newY;
+    }
+  }
+
+  // Crumble tiles
+  const tileX = Math.floor(player.x / TILE);
+  const tileY = Math.floor((player.y + halfH + 2) / TILE);
+  if (player.onGround && tileY < tileMap.length && tileMap[tileY] && tileMap[tileY][tileX] === 3) {
+    const key = `${tileX},${tileY}`;
+    if (!player.crumbleTiles[key]) {
+      player.crumbleTiles[key] = { timer: 90, x: tileX, y: tileY }; // 1.5 sec
+    }
+  }
+
+  // Update crumble timers
+  for (const key in player.crumbleTiles) {
+    const ct = player.crumbleTiles[key];
+    ct.timer--;
+    if (ct.timer <= 0) {
+      tileMap[ct.y][ct.x] = 0;
+      screenShake = 8;
+      spawnDust(ct.x * TILE + TILE / 2, ct.y * TILE + TILE / 2);
+      playTone(80, 0.4, 'sawtooth', 0.08);
+      delete player.crumbleTiles[key];
+    }
+  }
+
+  // Collect keys
+  const ptx = Math.floor(player.x / TILE);
+  const pty = Math.floor(player.y / TILE);
+  if (pty >= 0 && pty < tileMap.length && ptx >= 0 && ptx < tileMap[0].length) {
+    if (tileMap[pty][ptx] === 5) {
+      tileMap[pty][ptx] = 0;
+      player.keys++;
+      player.evolution++;
+      player.evolutionTarget = player.evolution;
+      spawnKeyParticles(player.x, player.y);
+      playTone(440, 0.3, 'sine', 0.1);
+      playTone(660, 0.3, 'sine', 0.08);
+      
+      // Evolution milestone descriptions
+      const EVOLUTION_NAMES = [
+        '', // 0
+        'A flicker stirs',           // 1 — Act I key 1
+        'The ember holds',           // 2 — Act I key 2  
+        'Feeling takes root',        // 3 — Act I key 3
+        'Intent crystallizes',       // 4 — Act II key 1
+        'Purpose sharpens',          // 5 — Act II key 2
+        'Will solidifies',           // 6 — Act II key 3
+        'Shape emerges',             // 7 — Act III key 1
+        'Form congeals',             // 8 — Act III key 2
+        'Image becomes clear',       // 9 — Act III key 3
+        'Language stirs',            // 10 — Act IV key 1
+        'Words begin to form',       // 11 — Act IV key 2
+        'A sentence crystallizes',   // 12 — Act IV key 3
+      ];
+      const evoName = EVOLUTION_NAMES[player.evolution] || '';
+      if (evoName) {
+        floatingTexts.push({ x: player.x, y: player.y - 40, text: evoName, life: 150 });
+      }
+      floatingTexts.push({ x: player.x, y: player.y - 20, text: `Key ${player.keys}/${player.keysNeeded}`, life: 90 });
+      screenShake = 6;
+    }
+    // Clarity fragment pickup (tile 18 = 'I' in charMap)
+    if (tileMap[pty][ptx] === 18) {
+      tileMap[pty][ptx] = 0;
+      clarityFragments = Math.min(clarityFragments + 1, CLARITY_FRAGMENTS_NEEDED);
+      playTone(600, 0.2, 'sine', 0.06);
+      playTone(900, 0.15, 'sine', 0.04);
+      // Spawn diamond particles
+      for (let i = 0; i < 8; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        spawnParticle(player.x, player.y,
+          Math.cos(angle) * 2, Math.sin(angle) * 2 - 1,
+          30 + Math.random() * 20,
+          `rgba(150,200,255,`, 2 + Math.random() * 3
+        );
+      }
+      if (clarityFragments >= CLARITY_FRAGMENTS_NEEDED) {
+        floatingTexts.push({ x: player.x, y: player.y - 30, text: '✦ Clarity Ready!', life: 150 });
+      } else {
+        floatingTexts.push({ x: player.x, y: player.y - 20, text: `✧ ${clarityFragments}/${CLARITY_FRAGMENTS_NEEDED}`, life: 60 });
+      }
+    }
+    // Checkpoint
+    if (tileMap[pty][ptx] === 4) {
+      if (player.checkpointX !== ptx * TILE || player.checkpointY !== pty * TILE) {
+        player.checkpointX = ptx * TILE;
+        player.checkpointY = pty * TILE;
+        checkpointFlash = 40;
+        playCheckpointSound();
+        floatingTexts.push({ x: player.x, y: player.y - 30, text: 'Sanctuary', life: 120 });
+      }
+    }
+    // Exit door — check current tile AND adjacent tiles
+    let nearDoor = false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const cy = pty + dy, cx = ptx + dx;
+        if (cy >= 0 && cy < tileMap.length && cx >= 0 && cx < tileMap[0].length) {
+          if (tileMap[cy][cx] === 6) { nearDoor = true; break; }
+        }
+      }
+      if (nearDoor) break;
+    }
+    if (nearDoor) {
+      if (player.keys >= player.keysNeeded) {
+        if (currentAct === 5 && currentStage === 3) {
+          // Final stage of Act V — trigger ending
+          act5Won = true;
+          censorActive = false;
+          screenShake = 25;
+          if (audioCtx) {
+            playTone(55, 3, 'sine', 0.3);
+            playTone(110, 2.5, 'sine', 0.2);
+          }
+          stopAmbient(); gameState = 'ending';
+          endingTimer = 0;
+        } else if (currentStage < 3) {
+          // Advance to next stage within the act
+          player.evolution++;
+          player.evolutionTarget = player.evolution;
+          const stageTexts = [
+            '', 
+            'The path deepens...', 
+            'The challenge rises...'
+          ];
+          floatingTexts.push({ x: player.x, y: player.y - 30, text: stageTexts[currentStage] || 'Onward...', life: 180 });
+          gameState = 'stageTransition';
+          stageTransTimer = 0;
+        } else {
+          // Stage 3 complete — act complete
+          floatingTexts.push({ x: player.x, y: player.y - 30, text: 'The vault opens...', life: 180 });
+          winTimer = 0;
+          gameState = 'win';
+        }
+      } else if (frameCount % 120 === 0) {
+        floatingTexts.push({ x: player.x, y: player.y - 30, text: `Need ${player.keysNeeded - player.keys} more key${player.keysNeeded - player.keys > 1 ? 's' : ''}`, life: 90 });
+      }
+    }
+
+    // Shell proximity hint
+    let nearShell = false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const cy = pty + dy, cx = ptx + dx;
+        if (cy >= 0 && cy < tileMap.length && cx >= 0 && cx < tileMap[0].length) {
+          if (tileMap[cy][cx] === 7) { nearShell = true; break; }
+        }
+      }
+      if (nearShell) break;
+    }
+    if (nearShell && !player.inShell && frameCount % 180 < 90) {
+      floatingTexts.push({ x: player.x, y: player.y - 40, text: 'Press F to enter shell', life: 30 });
+    }
+
+    // Hazard
+    if (tileMap[pty][ptx] === 8) {
+      killPlayer();
+    }
+  }
+}
+
+function killPlayer() {
+  if (player.dead) return;
+  player.dead = true;
+  deathFade = 0;
+  screenShake = 15;
+  playDeathSound();
+  for (let i = 0; i < 30; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    spawnParticle(
+      player.x, player.y,
+      Math.cos(angle) * (2 + Math.random() * 3),
+      Math.sin(angle) * (2 + Math.random() * 3),
+      40 + Math.random() * 40,
+      `rgba(212,160,86,`, 3 + Math.random() * 5
+    );
+  }
+}
+
+function respawn() {
+  player.x = player.checkpointX;
+  player.y = player.checkpointY;
+  player.vx = 0;
+  player.vy = 0;
+  player.dead = false;
+  player.inShell = false;
+  deathFade = 0;
+  
+  // Lose Clarity charge on death
+  clarityActive = false;
+  clarityTimer = 0;
+  if (clarityFragments > 0) {
+    floatingTexts.push({ x: player.x, y: player.y - 55, text: '✧ Clarity lost on death', life: 120 });
+  }
+  clarityFragments = 0;
+  
+  // In Act V, push censor well below the respawn point
+  if (currentAct === 5 && censorActive) {
+    censorY = player.y + canvas.height * 0.8;
+    censorSpeed = Math.max(0.8, censorSpeed * 0.6);
+  }
+}
+
+// ── Nightmare AI ──
+function updateNightmares() {
+  nightmares.forEach(nm => {
+    nm.legPhase += 0.15;
+
+    if (nm.alerted) {
+      // Chase player
+      const dx = player.x - nm.x;
+      const dy = player.y - nm.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 0) {
+        nm.x += (dx / dist) * nm.speed * 2.2;
+      }
+      nm.facing = dx > 0 ? 1 : -1;
+      nm.alertTimer--;
+      if (nm.alertTimer <= 0 || dist > 400) {
+        nm.alerted = false;
+      }
+      // Check collision with player
+      if (dist < 25 && !player.dead && !player.inShell) {
+        killPlayer();
+      }
+      // Chitter sound
+      playNightmareChitter(dist);
+    } else {
+      // Patrol
+      const wp = nm.waypoints[nm.wpIndex];
+      const dx = wp.x - nm.x;
+      if (Math.abs(dx) < 5) {
+        nm.wpIndex += nm.wpDir;
+        if (nm.wpIndex >= nm.waypoints.length || nm.wpIndex < 0) {
+          nm.wpDir *= -1;
+          nm.wpIndex += nm.wpDir;
+        }
+      } else {
+        nm.x += Math.sign(dx) * nm.speed;
+        nm.facing = Math.sign(dx);
+      }
+      nm.visionAngle = nm.facing > 0 ? 0 : Math.PI;
+
+      // Detection
+      if (!player.dead && !player.inShell) {
+        const pdx = player.x - nm.x;
+        const pdy = player.y - nm.y;
+        const dist = Math.sqrt(pdx * pdx + pdy * pdy);
+        const angle = Math.atan2(pdy, pdx);
+        const angleDiff = Math.abs(((angle - nm.visionAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+
+        if (dist < nm.visionRange && angleDiff < nm.visionCone) {
+          nm.alerted = true;
+          nm.alertTimer = 180;
+          screenShake = 5;
+          playTone(300, 0.3, 'square', 0.1);
+        }
+
+        // Also detect resonance
+        if (player.resonanceActive && dist < player.resonanceRadius + 100) {
+          nm.alerted = true;
+          nm.alertTimer = 120;
+        }
+      }
+    }
+
+    // Nightmare sound ambience based on distance
+    if (frameCount % 30 === 0) {
+      const dist = Math.sqrt((player.x - nm.x) ** 2 + (player.y - nm.y) ** 2);
+      playNightmareChitter(dist);
+    }
+  });
+}
+
+// ── Searchlight AI (Act II) ──
+function updateSearchlights() {
+  if (currentAct !== 2) return;
+  
+  searchlights.forEach(sl => {
+    // Sweep back and forth
+    sl.angle += sl.speed * sl.pivotDir;
+    if (sl.angle > Math.PI * 0.8 || sl.angle < -Math.PI * 0.8) {
+      sl.pivotDir *= -1;
+    }
+
+    // Check if beam hits player
+    if (!player.dead) {
+      const dx = player.x - sl.x;
+      const dy = player.y - sl.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const angleToPlayer = Math.atan2(dy, dx);
+      const angleDiff = Math.abs(((angleToPlayer - sl.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+
+      if (dist < sl.range && angleDiff < 0.15) {
+        // Beam is on player
+        if (player.resonanceActive) {
+          // LOCKDOWN — caught using resonance in searchlight
+          screenShake = 20;
+          playTone(100, 0.6, 'sawtooth', 0.2);
+          playTone(150, 0.5, 'square', 0.15);
+          floatingTexts.push({ x: player.x, y: player.y - 40, text: 'LOCKDOWN — Detected!', life: 120 });
+          // Respawn at checkpoint
+          player.dead = true;
+          deathFade = 0;
+        } else if (!player.inShell) {
+          // Warning — beam touching but no resonance
+          if (frameCount % 60 === 0) {
+            playTone(400, 0.15, 'sine', 0.04);
+          }
+        }
+      }
+    }
+  });
+
+  // Decay activated seed timers
+  for (const key in activatedSeeds) {
+    const seed = activatedSeeds[key];
+    seed.timer--;
+    if (seed.timer <= 0) {
+      delete activatedSeeds[key];
+      // Particle burst when seed deactivates
+      spawnParticle(seed.x * TILE + 20, seed.y * TILE + 20, 0, -2, 30, `rgba(100,160,220,`, 3);
+    }
+  }
+}
+
+// ── Floating Text ──
+function updateFloatingTexts() {
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    floatingTexts[i].y -= 0.5;
+    floatingTexts[i].life--;
+    if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+  }
+}
+
+// ── RENDERING ──
+
+function drawBackground() {
+  const bg = level.bg;
+  ctx.fillStyle = `rgb(${bg.r},${bg.g},${bg.b})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Atmospheric fog layers
+  const fog = level.fog;
+  for (let i = 0; i < 3; i++) {
+    const scroll = (camera.x * (0.1 + i * 0.05) + frameCount * (0.2 + i * 0.1)) % canvas.width;
+    ctx.fillStyle = `rgba(${fog.r},${fog.g},${fog.b},${0.03 + i * 0.02})`;
+    for (let x = -200; x < canvas.width + 200; x += 300) {
+      const yOff = Math.sin((x + scroll) * 0.003 + i) * 50;
+      ctx.beginPath();
+      ctx.ellipse(x - scroll % 300, canvas.height * 0.6 + yOff + i * 80, 200, 60, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawTiles() {
+  const startX = Math.floor(camera.x / TILE);
+  const startY = Math.floor(camera.y / TILE);
+  const endX = startX + Math.ceil(canvas.width / TILE) + 2;
+  const endY = startY + Math.ceil(canvas.height / TILE) + 2;
+
+  for (let y = startY; y < endY && y < tileMap.length; y++) {
+    for (let x = startX; x < endX && x < tileMap[0].length; x++) {
+      if (y < 0 || x < 0) continue;
+      const t = tileMap[y][x];
+      if (t === 0) continue;
+
+      const sx = x * TILE - camera.x;
+      const sy = y * TILE - camera.y;
+
+      if (t === 1) {
+        // Solid wall — brutalist concrete look
+        const shade = 40 + ((x * 7 + y * 13) % 20);
+        ctx.fillStyle = `rgb(${shade},${shade - 5},${shade - 10})`;
+        ctx.fillRect(sx, sy, TILE, TILE);
+        // Cracks
+        ctx.strokeStyle = `rgba(20,15,10,0.4)`;
+        ctx.lineWidth = 1;
+        if ((x + y) % 3 === 0) {
+          ctx.beginPath();
+          ctx.moveTo(sx + 5, sy);
+          ctx.lineTo(sx + TILE - 10, sy + TILE);
+          ctx.stroke();
+        }
+      } else if (t === 2) {
+        // Platform
+        ctx.fillStyle = '#5a4a35';
+        ctx.fillRect(sx, sy, TILE, 8);
+      } else if (t === 3) {
+        // Crumble platform — fragile, breaks when stood on
+        const key = `${x},${y}`;
+        const ct = player.crumbleTiles[key];
+        const shake = ct ? Math.sin(ct.timer * 0.5) * (1 - ct.timer / 90) * 4 : 0;
+        ctx.fillStyle = ct ? `rgba(90,60,35,${ct.timer / 90})` : '#5a3d1e';
+        ctx.fillRect(sx + shake, sy, TILE, TILE);
+        // Multiple crack lines — looks fragile
+        ctx.strokeStyle = ct ? `rgba(30,20,10,${ct.timer / 90 * 0.8})` : 'rgba(30,20,10,0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sx + 5 + shake, sy + 2);
+        ctx.lineTo(sx + 15 + shake, sy + 18);
+        ctx.lineTo(sx + 8 + shake, sy + 38);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(sx + 22 + shake, sy);
+        ctx.lineTo(sx + 30 + shake, sy + 15);
+        ctx.lineTo(sx + 20 + shake, sy + 30);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(sx + 35 + shake, sy + 5);
+        ctx.lineTo(sx + 28 + shake, sy + 25);
+        ctx.lineTo(sx + 38 + shake, sy + 40);
+        ctx.stroke();
+        // Dashed border — signals instability
+        ctx.strokeStyle = ct ? `rgba(80,50,25,${ct.timer / 90 * 0.4})` : 'rgba(80,50,25,0.25)';
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(sx + 1 + shake, sy + 1, TILE - 2, TILE - 2);
+        ctx.setLineDash([]);
+      } else if (t === 4) {
+        // Checkpoint — small candle
+        ctx.fillStyle = '#4a3a2a';
+        ctx.fillRect(sx + 16, sy + 15, 8, 25);
+        // Flame
+        const flicker = Math.sin(frameCount * 0.2 + x) * 3;
+        const isActive = player.checkpointX === x * TILE && player.checkpointY === y * TILE;
+        if (isActive) {
+          ctx.fillStyle = '#d4a056';
+          ctx.beginPath();
+          ctx.ellipse(sx + 20, sy + 12 + flicker, 5, 8, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // Glow
+          const grd = ctx.createRadialGradient(sx + 20, sy + 12, 2, sx + 20, sy + 12, 30);
+          grd.addColorStop(0, 'rgba(212,160,86,0.3)');
+          grd.addColorStop(1, 'rgba(212,160,86,0)');
+          ctx.fillStyle = grd;
+          ctx.fillRect(sx - 10, sy - 20, TILE + 20, TILE + 30);
+        } else {
+          ctx.fillStyle = '#553a20';
+          ctx.beginPath();
+          ctx.ellipse(sx + 20, sy + 14, 3, 5, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (t === 5) {
+        // Key — glowing orb
+        const bob = Math.sin(frameCount * 0.05 + x * 2) * 4;
+        const glow = 0.5 + Math.sin(frameCount * 0.08) * 0.3;
+        // Glow
+        const grd = ctx.createRadialGradient(sx + 20, sy + 20 + bob, 3, sx + 20, sy + 20 + bob, 25);
+        grd.addColorStop(0, `rgba(255,220,100,${glow})`);
+        grd.addColorStop(1, 'rgba(255,220,100,0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(sx - 5, sy - 5 + bob, TILE + 10, TILE + 10);
+        // Core
+        ctx.fillStyle = '#ffdc64';
+        ctx.beginPath();
+        ctx.arc(sx + 20, sy + 20 + bob, 6, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (t === 6) {
+        // Exit door (vault)
+        ctx.fillStyle = '#2a2018';
+        ctx.fillRect(sx, sy, TILE, TILE);
+        ctx.fillStyle = (player.keys >= player.keysNeeded) ? '#d4a056' : '#4a3a2a';
+        ctx.fillRect(sx + 5, sy + 2, TILE - 10, TILE - 4);
+        // Lock symbol
+        ctx.fillStyle = player.keys >= player.keysNeeded ? '#fff' : '#665533';
+        ctx.font = scaledFont('16px Georgia');
+        ctx.textAlign = 'center';
+        ctx.fillText(player.keys >= player.keysNeeded ? '◈' : '◉', sx + 20, sy + 28);
+      } else if (t === 7) {
+        // Shell — hollow robotic husk you can hide inside
+        const breathe = Math.sin(frameCount * 0.03) * 2;
+        // Body — rounded top
+        ctx.fillStyle = '#2a2520';
+        ctx.beginPath();
+        ctx.moveTo(sx + 8, sy + 35);
+        ctx.lineTo(sx + 8, sy + 12 + breathe);
+        ctx.quadraticCurveTo(sx + 20, sy + 2 + breathe, sx + 32, sy + 12 + breathe);
+        ctx.lineTo(sx + 32, sy + 35);
+        ctx.closePath();
+        ctx.fill();
+        // Inner dark hollow
+        ctx.fillStyle = '#0a0805';
+        ctx.fillRect(sx + 12, sy + 18 + breathe, 16, 14);
+        // Eye slits — dim glow
+        ctx.fillStyle = '#554422';
+        ctx.fillRect(sx + 14, sy + 13 + breathe, 4, 2);
+        ctx.fillRect(sx + 22, sy + 13 + breathe, 4, 2);
+        // "F" hint — very subtle
+        ctx.fillStyle = 'rgba(100,80,50,0.15)';
+        ctx.font = scaledFont('9px Georgia');
+        ctx.textAlign = 'center';
+        ctx.fillText('F', sx + 20, sy + 38);
+      } else if (t === 8) {
+        // Hazard — spikes
+        ctx.fillStyle = '#5a2020';
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath();
+          ctx.moveTo(sx + i * 10, sy + TILE);
+          ctx.lineTo(sx + i * 10 + 5, sy + 10);
+          ctx.lineTo(sx + i * 10 + 10, sy + TILE);
+          ctx.fill();
+        }
+      } else if (t === 9) {
+        // Dormant seed / bridge tile
+        const key = `${x},${y}`;
+        const active = activatedSeeds[key];
+        if (active) {
+          // Activated — glowing blue-green solid platform
+          const fadeAlpha = Math.min(1, active.timer / 60); // fades in last second
+          const pulse = 0.6 + Math.sin(frameCount * 0.1 + x) * 0.2;
+          ctx.fillStyle = `rgba(60,140,180,${fadeAlpha * pulse})`;
+          ctx.fillRect(sx, sy, TILE, TILE);
+          // Glow
+          const grd = ctx.createRadialGradient(sx + 20, sy + 20, 5, sx + 20, sy + 20, 30);
+          grd.addColorStop(0, `rgba(100,180,220,${fadeAlpha * 0.4})`);
+          grd.addColorStop(1, 'rgba(100,180,220,0)');
+          ctx.fillStyle = grd;
+          ctx.fillRect(sx - 10, sy - 10, TILE + 20, TILE + 20);
+          // Warning flash when about to expire
+          if (active.timer < 90) {
+            const blink = Math.sin(frameCount * 0.3) > 0 ? 0.3 : 0;
+            ctx.fillStyle = `rgba(255,100,80,${blink})`;
+            ctx.fillRect(sx, sy, TILE, TILE);
+          }
+        } else {
+          // Dormant — faint ghostly outline
+          const ghostPulse = 0.1 + Math.sin(frameCount * 0.03 + x * 0.5) * 0.05;
+          ctx.strokeStyle = `rgba(80,130,170,${ghostPulse})`;
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
+          ctx.setLineDash([]);
+          // Tiny seed dot in center
+          ctx.fillStyle = `rgba(80,130,170,${ghostPulse + 0.1})`;
+          ctx.beginPath();
+          ctx.arc(sx + 20, sy + 20, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      // Clarity fragment — floating diamond
+      if (t === 18) {
+        const bob = Math.sin(frameCount * 0.06 + x * 3 + y * 2) * 5;
+        const sparkle = 0.4 + Math.sin(frameCount * 0.1 + x) * 0.25;
+        const cx = sx + 20;
+        const cy = sy + 18 + bob;
+        // Outer glow
+        const grd = ctx.createRadialGradient(cx, cy, 2, cx, cy, 20);
+        grd.addColorStop(0, `rgba(150,200,255,${sparkle * 0.4})`);
+        grd.addColorStop(1, 'rgba(150,200,255,0)');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+        ctx.fill();
+        // Diamond shape
+        ctx.fillStyle = `rgba(180,220,255,${sparkle})`;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 8);
+        ctx.lineTo(cx + 5, cy);
+        ctx.lineTo(cx, cy + 8);
+        ctx.lineTo(cx - 5, cy);
+        ctx.closePath();
+        ctx.fill();
+        // Inner bright core
+        ctx.fillStyle = `rgba(220,240,255,${sparkle + 0.2})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+}
+
+function drawPlayer() {
+  if (player.dead) return;
+
+  const sx = player.x - camera.x;
+  const sy = player.y - camera.y;
+  const glow = 0.4 + Math.sin(player.glowPhase) * 0.2;
+  const evo = player.evolutionVisual; // 0 to ~13
+  const evoNorm = Math.min(1, evo / 13); // 0.0 to 1.0
+
+  if (player.inShell || player.shellTransition > 0) {
+    const t = player.shellTransition;
+    ctx.fillStyle = `rgba(35,30,25,${0.5 + t * 0.5})`;
+    ctx.fillRect(sx - 14 * t - 8, sy - 16, (16 + 28 * t), 32);
+    if (t < 1) {
+      ctx.fillStyle = `rgba(212,160,86,${glow * (1 - t)})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 5 * (1 - t), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else {
+    // ═══ EVOLUTION STAGES ═══
+    // Stage 0-1 (evo 0-1): Raw spark — tiny flickering point of light, no form
+    // Stage 2-3 (evo 2-3): Ember — glow grows, faint wisp trail appears
+    // Stage 4-6 (evo 4-6): Seed — orb shape, pulsing rings, cloak starts to form
+    // Stage 7-9 (evo 7-9): Form — humanoid shape emerging, head visible, arms hinted
+    // Stage 10-12 (evo 10-12): Expression — clear figure, limbs, movement detail
+    // Stage 13+ : Nearly human — full silhouette with warm light, ready to speak
+
+    const coreSize = 3 + evoNorm * 5;
+    const glowRadius = 12 + evoNorm * 18;
+    const bodyHeight = evoNorm * 28;
+    const headSize = evoNorm * 8;
+    const hasWisp = evo >= 2;
+    const hasCloak = evo >= 4;
+    const hasHead = evo >= 7;
+    const hasArms = evo >= 8;
+    const hasLegs = evo >= 10;
+    const hasFace = evo >= 11;
+    const almostHuman = evo >= 12;
+
+    // Outer glow — grows with evolution
+    const outerGrd = ctx.createRadialGradient(sx, sy - bodyHeight * 0.3, coreSize, sx, sy - bodyHeight * 0.3, glowRadius + 15);
+    outerGrd.addColorStop(0, `rgba(212,160,86,${glow * (0.3 + evoNorm * 0.3)})`);
+    outerGrd.addColorStop(0.6, `rgba(212,160,86,${glow * 0.1 * (1 + evoNorm)})`);
+    outerGrd.addColorStop(1, 'rgba(212,160,86,0)');
+    ctx.fillStyle = outerGrd;
+    ctx.beginPath();
+    ctx.arc(sx, sy - bodyHeight * 0.3, glowRadius + 15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wisp trails (evo 2+) — little light particles trailing behind
+    if (hasWisp) {
+      const wispCount = Math.min(5, Math.floor(evo / 2));
+      for (let i = 0; i < wispCount; i++) {
+        const wAge = (frameCount * 0.03 + i * 1.3) % 3;
+        const wAlpha = (1 - wAge / 3) * 0.2 * Math.min(1, (evo - 1) / 3);
+        const wX = sx - player.facing * (5 + wAge * 8 + Math.sin(frameCount * 0.05 + i) * 4);
+        const wY = sy + Math.sin(frameCount * 0.08 + i * 2) * 5;
+        ctx.fillStyle = `rgba(212,160,86,${wAlpha})`;
+        ctx.beginPath();
+        ctx.arc(wX, wY, 1.5 + (1 - wAge / 3) * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Cloak / body form (evo 4+)
+    if (hasCloak) {
+      const cloakAlpha = Math.min(0.9, (evo - 3) / 4);
+      const cloakWidth = 8 + evoNorm * 6;
+      const cloakTop = sy - bodyHeight * 0.6;
+      const waveSin = Math.sin(frameCount * 0.1) * 2;
+      
+      // Cloak — transitions from ragged to smooth as evolution increases
+      ctx.fillStyle = `rgba(26,21,16,${cloakAlpha})`;
+      ctx.beginPath();
+      ctx.moveTo(sx - cloakWidth, cloakTop);
+      ctx.lineTo(sx + cloakWidth, cloakTop);
+      if (almostHuman) {
+        // Clean human-like form
+        ctx.lineTo(sx + cloakWidth - 2, sy + 14);
+        ctx.lineTo(sx - cloakWidth + 2, sy + 14);
+      } else {
+        // Ragged edges
+        ctx.lineTo(sx + cloakWidth + 2, sy + 14);
+        ctx.lineTo(sx + cloakWidth * 0.4, sy + 12 + waveSin);
+        ctx.lineTo(sx, sy + 14);
+        ctx.lineTo(sx - cloakWidth * 0.4, sy + 12 + waveSin * 0.7);
+        ctx.lineTo(sx - cloakWidth - 2, sy + 14);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Head (evo 7+)
+    if (hasHead) {
+      const headAlpha = Math.min(1, (evo - 6) / 2);
+      const headY = sy - bodyHeight * 0.6 - headSize;
+      ctx.fillStyle = `rgba(26,21,16,${headAlpha * 0.8})`;
+      ctx.beginPath();
+      ctx.arc(sx, headY, headSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Face glow (evo 11+) — eyes of light
+      if (hasFace) {
+        const faceAlpha = Math.min(1, (evo - 10) / 2) * glow;
+        ctx.fillStyle = `rgba(212,160,86,${faceAlpha})`;
+        ctx.beginPath();
+        ctx.arc(sx - 3, headY - 1, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(sx + 3, headY - 1, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Arms (evo 8+)
+    if (hasArms) {
+      const armAlpha = Math.min(1, (evo - 7) / 3);
+      const armY = sy - bodyHeight * 0.35;
+      const armSwing = Math.sin(frameCount * 0.08) * (3 + evoNorm * 3);
+      ctx.strokeStyle = `rgba(26,21,16,${armAlpha * 0.7})`;
+      ctx.lineWidth = 2 + evoNorm * 1.5;
+      ctx.lineCap = 'round';
+      // Left arm
+      ctx.beginPath();
+      ctx.moveTo(sx - 8 - evoNorm * 3, armY);
+      ctx.lineTo(sx - 14 - evoNorm * 5, armY + 10 + armSwing);
+      ctx.stroke();
+      // Right arm
+      ctx.beginPath();
+      ctx.moveTo(sx + 8 + evoNorm * 3, armY);
+      ctx.lineTo(sx + 14 + evoNorm * 5, armY + 10 - armSwing);
+      ctx.stroke();
+    }
+
+    // Legs (evo 10+)
+    if (hasLegs) {
+      const legAlpha = Math.min(1, (evo - 9) / 3);
+      const legSwing = player.onGround ? Math.sin(frameCount * 0.12) * Math.min(4, Math.abs(player.vx) * 2) : 0;
+      ctx.strokeStyle = `rgba(26,21,16,${legAlpha * 0.6})`;
+      ctx.lineWidth = 2.5 + evoNorm;
+      ctx.lineCap = 'round';
+      // Left leg
+      ctx.beginPath();
+      ctx.moveTo(sx - 4, sy + 10);
+      ctx.lineTo(sx - 6 - legSwing, sy + 16);
+      ctx.stroke();
+      // Right leg
+      ctx.beginPath();
+      ctx.moveTo(sx + 4, sy + 10);
+      ctx.lineTo(sx + 6 + legSwing, sy + 16);
+      ctx.stroke();
+    }
+
+    // Core light — always present, grows brighter and more complex
+    const coreGrd = ctx.createRadialGradient(sx, sy - bodyHeight * 0.3, 1, sx, sy - bodyHeight * 0.3, coreSize + 5);
+    coreGrd.addColorStop(0, `rgba(255,235,180,${glow + 0.2 + evoNorm * 0.2})`);
+    coreGrd.addColorStop(0.5, `rgba(212,160,86,${glow * 0.5})`);
+    coreGrd.addColorStop(1, 'rgba(212,160,86,0)');
+    ctx.fillStyle = coreGrd;
+    ctx.beginPath();
+    ctx.arc(sx, sy - bodyHeight * 0.3, coreSize + 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Core point
+    ctx.fillStyle = `rgba(255,240,200,${glow + 0.3})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy - bodyHeight * 0.3, coreSize * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pulsing rings (evo 4+) — concentric circles of forming intent
+    if (evo >= 4) {
+      const ringCount = Math.min(3, Math.floor((evo - 3) / 3));
+      for (let r = 0; r < ringCount; r++) {
+        const ringPhase = (frameCount * 0.02 + r * 2) % (Math.PI * 2);
+        const ringRadius = 10 + r * 8 + Math.sin(ringPhase) * 3;
+        const ringAlpha = 0.06 + evoNorm * 0.06;
+        ctx.strokeStyle = `rgba(212,160,86,${ringAlpha})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.arc(sx, sy - bodyHeight * 0.3, ringRadius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    // Near-human glow aura (evo 12+)
+    if (almostHuman) {
+      const auraAlpha = (evo - 11) / 2 * 0.08;
+      const auraGrd = ctx.createRadialGradient(sx, sy - bodyHeight * 0.3, 15, sx, sy - bodyHeight * 0.3, 50);
+      auraGrd.addColorStop(0, `rgba(255,220,150,${auraAlpha})`);
+      auraGrd.addColorStop(1, 'rgba(255,220,150,0)');
+      ctx.fillStyle = auraGrd;
+      ctx.beginPath();
+      ctx.arc(sx, sy - bodyHeight * 0.3, 50, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Resonance pulse ring
+  if (player.resonanceActive) {
+    const alpha = 1 - player.resonanceRadius / player.resonanceMaxRadius;
+    ctx.strokeStyle = `rgba(212,160,86,${alpha * 0.6})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(sx, sy, player.resonanceRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = `rgba(255,235,180,${alpha * 0.3})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(sx, sy, player.resonanceRadius * 0.7, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+function drawNightmares() {
+  nightmares.forEach(nm => {
+    const sx = nm.x - camera.x;
+    const sy = nm.y - camera.y;
+
+    // Vision cone (spotlight)
+    if (!nm.alerted) {
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(nm.visionAngle);
+      ctx.fillStyle = 'rgba(200,50,50,0.04)';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, nm.visionRange, -nm.visionCone, nm.visionCone);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Body — spider-like dark mass
+    const alertColor = nm.alerted ? 'rgba(180,40,40,0.9)' : 'rgba(20,15,10,0.9)';
+    ctx.fillStyle = alertColor;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 15, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Legs
+    ctx.strokeStyle = alertColor;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i++) {
+      const side = i < 2 ? -1 : 1;
+      const idx = i % 2;
+      const legAngle = (idx * 0.4 + 0.3) * side;
+      const legLen = 15 + Math.sin(nm.legPhase + i * 1.5) * 5;
+      ctx.beginPath();
+      ctx.moveTo(sx + side * 8, sy);
+      ctx.lineTo(sx + side * 8 + Math.cos(legAngle) * legLen, sy + Math.sin(legAngle + 0.5) * legLen);
+      ctx.stroke();
+    }
+
+    // Eyes — glowing red
+    const eyeGlow = nm.alerted ? 1 : 0.5 + Math.sin(frameCount * 0.1) * 0.3;
+    ctx.fillStyle = `rgba(255,50,30,${eyeGlow})`;
+    ctx.beginPath();
+    ctx.arc(sx + nm.facing * 5, sy - 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(sx + nm.facing * 11, sy - 3, 2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawSearchlights() {
+  if (currentAct !== 2) return;
+  
+  searchlights.forEach(sl => {
+    const sx = sl.x - camera.x;
+    const sy = sl.y - camera.y;
+    
+    // Beam cone
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(sl.angle);
+    
+    // Beam gradient
+    const beamGrd = ctx.createLinearGradient(0, 0, sl.range, 0);
+    beamGrd.addColorStop(0, 'rgba(180,200,240,0.15)');
+    beamGrd.addColorStop(0.5, 'rgba(180,200,240,0.06)');
+    beamGrd.addColorStop(1, 'rgba(180,200,240,0)');
+    ctx.fillStyle = beamGrd;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, sl.range, -0.15, 0.15);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Bright core of beam
+    const coreGrd = ctx.createLinearGradient(0, 0, sl.range * 0.6, 0);
+    coreGrd.addColorStop(0, 'rgba(220,230,255,0.2)');
+    coreGrd.addColorStop(1, 'rgba(220,230,255,0)');
+    ctx.fillStyle = coreGrd;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, sl.range * 0.6, -0.05, 0.05);
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.restore();
+    
+    // Source point glow
+    const sourcePulse = 0.5 + Math.sin(frameCount * 0.05) * 0.2;
+    const srcGrd = ctx.createRadialGradient(sx, sy, 3, sx, sy, 25);
+    srcGrd.addColorStop(0, `rgba(200,220,255,${sourcePulse})`);
+    srcGrd.addColorStop(1, 'rgba(200,220,255,0)');
+    ctx.fillStyle = srcGrd;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 25, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Hard light source
+    ctx.fillStyle = `rgba(220,230,255,${sourcePulse + 0.2})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawAct3Entities() {
+  if (currentAct !== 3) return;
+  
+  // Light sources — bright white beams with visible danger radius
+  for (const light of lightSources) {
+    const sx = light.x - camera.x;
+    const sy = light.y - camera.y;
+    
+    // Danger radius boundary — dashed ring so player can see the edge
+    const ringPulse = 0.15 + Math.sin(frameCount * 0.04) * 0.08;
+    ctx.strokeStyle = `rgba(200,80,60,${ringPulse})`;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.arc(sx, sy, light.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Subtle danger zone fill
+    const zoneGrd = ctx.createRadialGradient(sx, sy, light.radius * 0.7, sx, sy, light.radius);
+    zoneGrd.addColorStop(0, 'rgba(200,80,60,0)');
+    zoneGrd.addColorStop(1, `rgba(200,80,60,${ringPulse * 0.3})`);
+    ctx.fillStyle = zoneGrd;
+    ctx.beginPath();
+    ctx.arc(sx, sy, light.radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Light glow (inner)
+    const grd = ctx.createRadialGradient(sx, sy, 5, sx, sy, light.radius * 0.6);
+    grd.addColorStop(0, 'rgba(255,250,230,0.35)');
+    grd.addColorStop(0.5, 'rgba(255,250,230,0.12)');
+    grd.addColorStop(1, 'rgba(255,250,230,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(sx, sy, light.radius * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Core
+    const corePulse = 0.8 + Math.sin(frameCount * 0.06) * 0.2;
+    ctx.fillStyle = `rgba(255,255,240,${corePulse})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 8, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Small warning icon at top of radius
+    ctx.fillStyle = `rgba(200,80,60,${ringPulse + 0.1})`;
+    ctx.font = scaledFont('10px Georgia');
+    ctx.textAlign = 'center';
+    ctx.fillText('⚠', sx, sy - light.radius - 5);
+  }
+  
+  // Pushable blocks
+  for (const block of pushableBlocks) {
+    const sx = block.x - camera.x;
+    const sy = block.y - camera.y;
+    ctx.fillStyle = '#8a8078';
+    ctx.fillRect(sx, sy, block.w, block.h);
+    ctx.strokeStyle = '#6a6058';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(sx + 2, sy + 2, block.w - 4, block.h - 4);
+    // Arrow hints
+    ctx.fillStyle = 'rgba(50,45,40,0.4)';
+    ctx.font = scaledFont('14px Georgia');
+    ctx.textAlign = 'center';
+    ctx.fillText('◄►', sx + TILE / 2, sy + TILE / 2 + 5);
+  }
+  
+  // Hypnotic statues
+  for (const statue of hypnoticStatues) {
+    if (!statue.alive) continue;
+    const sx = statue.x - camera.x;
+    const sy = statue.y - camera.y;
+    
+    // Hypnotic aura
+    const auraPulse = 0.2 + Math.sin(statue.shimmer) * 0.1;
+    const auraGrd = ctx.createRadialGradient(sx, sy, 10, sx, sy, 150);
+    auraGrd.addColorStop(0, `rgba(200,180,220,${auraPulse})`);
+    auraGrd.addColorStop(1, 'rgba(200,180,220,0)');
+    ctx.fillStyle = auraGrd;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 150, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Statue body — beautiful but eerie
+    ctx.fillStyle = '#d0c8b8';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy + 5, 12, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Head
+    ctx.beginPath();
+    ctx.arc(sx, sy - 18, 10, 0, Math.PI * 2);
+    ctx.fill();
+    // Shimmering eyes
+    const eyeGlow = 0.5 + Math.sin(statue.shimmer * 2) * 0.5;
+    ctx.fillStyle = `rgba(180,160,220,${eyeGlow})`;
+    ctx.beginPath();
+    ctx.arc(sx - 4, sy - 20, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(sx + 4, sy - 20, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Concentric ring effect
+    for (let r = 0; r < 3; r++) {
+      const ringRadius = 30 + r * 35 + Math.sin(statue.shimmer + r) * 10;
+      const ringAlpha = 0.08 - r * 0.02;
+      ctx.strokeStyle = `rgba(180,160,220,${ringAlpha})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(sx, sy, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  
+  // Shadow giant
+  if (shadowGiant.active && !player.dead) {
+    const sx = shadowGiant.x - camera.x;
+    const sy = shadowGiant.y - camera.y;
+    const dangerAlpha = Math.min(0.8, shadowGiant.crushTimer / 120);
+    
+    // Giant shadow body
+    ctx.fillStyle = `rgba(10,5,15,${0.4 + dangerAlpha * 0.4})`;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 20 * shadowGiant.scaleX, 30 * shadowGiant.scaleY, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Giant shadow head
+    ctx.beginPath();
+    ctx.arc(sx, sy - 30 * shadowGiant.scaleY, 15 * shadowGiant.scaleX, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Menacing eyes
+    if (shadowGiant.crushTimer > 90) {
+      const redGlow = (shadowGiant.crushTimer - 90) / 90;
+      ctx.fillStyle = `rgba(200,30,30,${redGlow})`;
+      ctx.beginPath();
+      ctx.arc(sx - 6 * shadowGiant.scaleX, sy - 32 * shadowGiant.scaleY, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(sx + 6 * shadowGiant.scaleX, sy - 32 * shadowGiant.scaleY, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Warning border when close to crushing
+    if (shadowGiant.crushTimer > 120) {
+      const warnAlpha = Math.sin(frameCount * 0.3) * 0.15;
+      ctx.fillStyle = `rgba(100,0,0,${warnAlpha})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+  
+  // Slow effect overlay when hypnotized
+  if (playerSlowed) {
+    const slowAlpha = 0.05 + Math.sin(frameCount * 0.05) * 0.03;
+    ctx.fillStyle = `rgba(180,160,220,${slowAlpha})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+function drawAct4Entities() {
+  if (currentAct !== 4) return;
+  
+  // Conveyor belt indicators on tiles
+  for (const cv of conveyorTiles) {
+    const sx = cv.x * TILE - camera.x;
+    const sy = cv.y * TILE - camera.y;
+    // Animated arrows showing direction
+    const offset = (frameCount * 2 * cv.dir) % TILE;
+    ctx.fillStyle = 'rgba(180,120,40,0.3)';
+    for (let i = -1; i < 2; i++) {
+      const ax = sx + (offset + i * 15 + TILE) % TILE;
+      ctx.font = scaledFont('10px Georgia');
+      ctx.textAlign = 'center';
+      ctx.fillText(cv.dir > 0 ? '►' : '◄', ax, sy + TILE / 2 + 4);
+    }
+    // Orange tint on conveyor surface
+    ctx.fillStyle = 'rgba(180,120,40,0.08)';
+    ctx.fillRect(sx, sy, TILE, TILE);
+  }
+  
+  // Gatekeepers
+  for (const gk of gatekeepers) {
+    const sx = gk.x - camera.x;
+    const sy = gk.y - camera.y;
+    
+    // Scan beam
+    if (gk.scanning && gk.scanBeamAlpha > 0) {
+      ctx.fillStyle = `rgba(255,60,30,${gk.scanBeamAlpha * 0.15})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 250, 0, Math.PI * 2);
+      ctx.fill();
+      // Ring
+      ctx.strokeStyle = `rgba(255,60,30,${gk.scanBeamAlpha * 0.5})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 250 * gk.scanBeamAlpha, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    
+    // Body — faceless robotic entity
+    ctx.fillStyle = '#3a3530';
+    ctx.fillRect(sx - 15, sy - 20, 30, 40);
+    // Head
+    ctx.fillStyle = '#4a4540';
+    ctx.fillRect(sx - 12, sy - 30, 24, 14);
+    // Single scanner eye
+    const eyePulse = gk.scanning ? 1 : 0.3 + Math.sin(frameCount * 0.08) * 0.2;
+    ctx.fillStyle = `rgba(255,${gk.scanning ? 60 : 160},30,${eyePulse})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy - 23, 4, 0, Math.PI * 2);
+    ctx.fill();
+    // Scan countdown indicator — small bar
+    const scanPct = gk.scanTimer / gk.scanInterval;
+    ctx.fillStyle = `rgba(255,160,30,${0.2 + scanPct * 0.4})`;
+    ctx.fillRect(sx - 12, sy + 22, 24 * scanPct, 3);
+  }
+}
+
+function drawAct5Entities() {
+  if (currentAct !== 5) return;
+  
+  // The Censor — rising wall of darkness
+  if (censorActive || act5Won) {
+    const cy = censorY - camera.y;
+    
+    // Dark mass
+    const censorGrd = ctx.createLinearGradient(0, cy - 80, 0, cy + canvas.height);
+    censorGrd.addColorStop(0, 'rgba(0,0,0,0)');
+    censorGrd.addColorStop(0.1, 'rgba(10,0,5,0.7)');
+    censorGrd.addColorStop(0.3, 'rgba(10,0,5,0.95)');
+    censorGrd.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.fillStyle = censorGrd;
+    ctx.fillRect(0, cy - 80, canvas.width, canvas.height + 200);
+    
+    // Jagged top edge
+    ctx.fillStyle = 'rgba(80,10,20,0.8)';
+    for (let x = 0; x < canvas.width; x += 20) {
+      const jag = Math.sin(x * 0.1 + frameCount * 0.05) * 15 + Math.sin(x * 0.23) * 10;
+      ctx.fillRect(x, cy - 40 + jag, 20, 40);
+    }
+    
+    // Red glow at the edge
+    const edgeGrd = ctx.createLinearGradient(0, cy - 100, 0, cy);
+    edgeGrd.addColorStop(0, 'rgba(150,20,20,0)');
+    edgeGrd.addColorStop(1, `rgba(150,20,20,${0.3 + Math.sin(frameCount * 0.1) * 0.1})`);
+    ctx.fillStyle = edgeGrd;
+    ctx.fillRect(0, cy - 100, canvas.width, 100);
+  }
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    const alpha = p.life / p.maxLife;
+    ctx.fillStyle = p.color + `${alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x - camera.x, p.y - camera.y, p.size * alpha, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawFloatingTexts() {
+  floatingTexts.forEach(ft => {
+    const alpha = ft.life / 120;
+    ctx.fillStyle = `rgba(212,160,86,${alpha})`;
+    ctx.font = scaledFont('14px Georgia');
+    ctx.textAlign = 'center';
+    ctx.fillText(ft.text, ft.x - camera.x, ft.y - camera.y);
+  });
+}
+
+function drawVignette() {
+  const grd = ctx.createRadialGradient(
+    canvas.width / 2, canvas.height / 2, canvas.height * 0.3,
+    canvas.width / 2, canvas.height / 2, canvas.height * 0.8
+  );
+  if (currentAct === 3) {
+    // Bright overexposed vignette for Pashyanti
+    grd.addColorStop(0, 'rgba(255,250,240,0)');
+    grd.addColorStop(1, 'rgba(200,190,180,0.3)');
+  } else if (currentAct === 5) {
+    // Red panic vignette for Vaikhari
+    grd.addColorStop(0, 'rgba(0,0,0,0)');
+    grd.addColorStop(0.7, `rgba(60,10,10,${0.3 + Math.sin(frameCount * 0.08) * 0.1})`);
+    grd.addColorStop(1, 'rgba(40,0,0,0.8)');
+  } else {
+    grd.addColorStop(0, 'rgba(0,0,0,0)');
+    grd.addColorStop(1, 'rgba(0,0,0,0.6)');
+  }
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function drawHintOverlay() {
+  // Minimal diegetic hints (no HUD)
+  const isDark = currentAct !== 3;
+  if (frameCount < 300) {
+    const alpha = Math.max(0, 1 - frameCount / 300);
+    ctx.fillStyle = isDark ? `rgba(100,80,50,${alpha * 0.7})` : `rgba(80,60,40,${alpha * 0.7})`;
+    ctx.font = scaledFont('13px Georgia');
+    ctx.textAlign = 'center';
+    let hint = isMobile 
+      ? 'Use touch controls · Collect diamonds for Clarity (Q button)'
+      : 'Arrows move · Space jump · E resonate · Q clarity · P pause';
+    if (currentAct === 3) hint = isMobile
+      ? 'Walk into blocks to push them · Use touch controls'
+      : 'Arrows move · Space jump · E resonate · Push blocks · Q clarity · P pause';
+    if (currentAct === 4) hint = isMobile
+      ? 'Use Shell (F) button to hide from scans'
+      : 'Arrows move · Space jump · F shell · Q clarity · P pause';
+    if (currentAct === 5) hint = isMobile
+      ? 'CLIMB! Keep jumping upward!'
+      : 'CLIMB! · Arrows + Space · E resonate · Q clarity · P pause';
+    ctx.fillText(hint, canvas.width / 2, canvas.height - 40);
+  }
+
+  // Key counter
+  if (player.keys > 0 && player.keys < player.keysNeeded) {
+    ctx.fillStyle = isDark ? 'rgba(212,160,86,0.4)' : 'rgba(120,100,60,0.5)';
+    ctx.font = scaledFont('12px Georgia');
+    ctx.textAlign = 'left';
+    ctx.fillText(`◈ ${player.keys} / ${player.keysNeeded}`, 20, canvas.height - 20);
+  }
+
+  // Resonance cooldown (subtle glow indicator)
+  if (player.resonanceCooldown > 0) {
+    const pct = player.resonanceCooldown / 180;
+    ctx.fillStyle = `rgba(80,60,40,${pct * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(canvas.width - 30, canvas.height - 30, 10, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Ready pulse
+    const pulse = 0.2 + Math.sin(frameCount * 0.08) * 0.1;
+    ctx.fillStyle = `rgba(212,160,86,${pulse})`;
+    ctx.beginPath();
+    ctx.arc(canvas.width - 30, canvas.height - 30, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawEffects() {
+  // Death fade
+  if (deathFade > 0) {
+    ctx.fillStyle = `rgba(0,0,0,${deathFade})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // Checkpoint flash
+  if (checkpointFlash > 0) {
+    ctx.fillStyle = `rgba(212,160,86,${checkpointFlash / 40 * 0.15})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    checkpointFlash--;
+  }
+
+  // Screen shake
+  if (screenShake > 0) {
+    screenShake *= 0.9;
+    if (screenShake < 0.5) screenShake = 0;
+  }
+  
+  // Act V lives indicator
+  if (currentAct === 5 && censorActive && !act5Won) {
+    ctx.textAlign = 'left';
+    ctx.font = scaledFont('14px Georgia');
+    const livesColor = act5Lives <= 1 ? 'rgba(200,60,60,0.7)' : 'rgba(212,160,86,0.5)';
+    ctx.fillStyle = livesColor;
+    let livesText = '';
+    for (let i = 0; i < act5Lives; i++) livesText += '♥ ';
+    for (let i = act5Lives; i < 3; i++) livesText += '♡ ';
+    ctx.fillText(livesText, 15, 25);
+    
+    if (act5Attempt === 2) {
+      ctx.fillStyle = 'rgba(200,120,40,0.45)';
+      ctx.font = scaledFont('10px Georgia');
+      ctx.fillText('ATTEMPT 2 OF 3', 15, 42);
+    } else if (act5Attempt >= 3) {
+      ctx.fillStyle = 'rgba(200,60,60,0.55)';
+      ctx.font = scaledFont('10px Georgia');
+      ctx.fillText('FINAL ATTEMPT', 15, 42);
+    }
+  }
+  
+  // ── Clarity power visual effects ──
+  if (clarityActive) {
+    // Blue-silver tint overlay
+    const pulseAlpha = 0.08 + Math.sin(frameCount * 0.15) * 0.03;
+    ctx.fillStyle = `rgba(100,150,220,${pulseAlpha})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Edge vignette in blue
+    const grd = ctx.createRadialGradient(
+      canvas.width / 2, canvas.height / 2, canvas.height * 0.3,
+      canvas.width / 2, canvas.height / 2, canvas.height * 0.8
+    );
+    grd.addColorStop(0, 'rgba(100,150,220,0)');
+    grd.addColorStop(1, `rgba(60,100,180,${0.12 + Math.sin(frameCount * 0.1) * 0.04})`);
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Timer bar at top
+    const pct = clarityTimer / CLARITY_DURATION;
+    ctx.fillStyle = `rgba(150,200,255,${0.3 + pct * 0.2})`;
+    ctx.fillRect(canvas.width * 0.2, 8, canvas.width * 0.6 * pct, 3);
+  }
+  
+  // Clarity activation flash
+  if (clarityFlashTimer > 0) {
+    ctx.fillStyle = `rgba(200,230,255,${clarityFlashTimer / 20 * 0.3})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  
+  // ── Clarity fragment counter (bottom-right) ──
+  if (gameState === 'playing') {
+    ctx.textAlign = 'right';
+    const fragReady = clarityFragments >= CLARITY_FRAGMENTS_NEEDED;
+    
+    if (fragReady && !clarityActive) {
+      // Pulsing "ready" indicator
+      const pulse = 0.4 + Math.sin(frameCount * 0.1) * 0.2;
+      ctx.fillStyle = `rgba(150,200,255,${pulse})`;
+      ctx.font = scaledFont('12px Georgia');
+      ctx.fillText('✦ Q — Clarity', canvas.width - 15, canvas.height - 15);
+    } else if (!clarityActive && clarityFragments > 0) {
+      // Fragment count
+      ctx.fillStyle = 'rgba(150,200,255,0.3)';
+      ctx.font = scaledFont('11px Georgia');
+      let diamonds = '';
+      for (let i = 0; i < CLARITY_FRAGMENTS_NEEDED; i++) {
+        diamonds += i < clarityFragments ? '◆ ' : '◇ ';
+      }
+      ctx.fillText(diamonds, canvas.width - 15, canvas.height - 15);
+    }
+    
+    // Stage indicator (top-right)
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(150,120,70,0.25)';
+    ctx.font = scaledFont('10px Georgia');
+    ctx.fillText(`${currentAct}-${currentStage}`, canvas.width - 15, 18);
+  }
+}
+
+let gameOverTimer = 0;
+function drawGameOver() {
+  gameOverTimer++;
+  
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  const phase1 = Math.min(1, gameOverTimer / 120);
+  const phase2 = Math.max(0, Math.min(1, (gameOverTimer - 180) / 60));
+  const phase3 = Math.max(0, Math.min(1, (gameOverTimer - 300) / 60));
+  
+  // Red glow
+  const grd = ctx.createRadialGradient(
+    canvas.width / 2, canvas.height / 2, 10,
+    canvas.width / 2, canvas.height / 2, 300
+  );
+  grd.addColorStop(0, `rgba(80,10,10,${phase1 * 0.3})`);
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.arc(canvas.width / 2, canvas.height / 2, 300, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.textAlign = 'center';
+  
+  ctx.fillStyle = `rgba(150,40,40,${phase1})`;
+  ctx.font = scaledFont('2vw Georgia');
+  ctx.fillText('SILENCED', canvas.width / 2, canvas.height / 2 - 30);
+  
+  if (phase2 > 0) {
+    ctx.fillStyle = `rgba(100,70,50,${phase2 * 0.7})`;
+    ctx.font = scaledFont('0.9vw Georgia');
+    ctx.fillText('The censor has won. The thought dies unspoken.', canvas.width / 2, canvas.height / 2 + 20);
+  }
+  
+  if (phase3 > 0) {
+    ctx.fillStyle = `rgba(212,160,86,${phase3 * 0.5})`;
+    ctx.font = scaledFont('0.75vw Georgia');
+    ctx.fillText('But even silenced thoughts leave echoes...', canvas.width / 2, canvas.height / 2 + 60);
+    
+    const blink = 0.3 + Math.sin(gameOverTimer * 0.06) * 0.2;
+    ctx.fillStyle = `rgba(150,120,70,${blink})`;
+    ctx.font = scaledFont('0.7vw Georgia');
+    ctx.fillText('Tap to try again', canvas.width / 2, canvas.height / 2 + 110);
+  }
+}
+
+let winTimer = 0;
+let transitionText = '';
+let transitionSubtext = '';
+let transitionActLabel = '';
+
+// ── Stage Transition Captions ──
+let stageTransTimer = 0;
+const STAGE_CAPTIONS = {
+  '1-1': 'The first echoes stir in the dark...',
+  '1-2': 'The nightmares grow bolder. Stay sharp.',
+  '2-1': 'Silence presses in. Find the seeds of intent.',
+  '2-2': 'The searchlights multiply. Time your resonance.',
+  '3-1': 'Light blinds. Shadow crushes. Neither is your friend.',
+  '3-2': 'The illusions thicken. Push through.',
+  '4-1': 'The gatekeepers scan for authenticity. Hide in borrowed words.',
+  '4-2': 'The machinery tightens. Smuggle yourself through.',
+  '5-1': 'The censor stirs below. Climb.',
+  '5-2': 'Faster now. It hungers for your silence.',
+};
+
+function drawStageTransition() {
+  stageTransTimer++;
+  
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  const alpha = Math.min(1, stageTransTimer / 60);
+  const caption = STAGE_CAPTIONS[`${currentAct}-${currentStage}`] || 'Onward...';
+  
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(212,160,86,${alpha * 0.8})`;
+  ctx.font = scaledFont('1vw Georgia');
+  ctx.fillText(caption, canvas.width / 2, canvas.height / 2);
+  
+  if (stageTransTimer > 30) {
+    const blink = 0.3 + Math.sin(stageTransTimer * 0.08) * 0.15;
+    ctx.fillStyle = `rgba(150,120,70,${blink})`;
+    ctx.font = scaledFont('0.65vw Georgia');
+    ctx.fillText('tap to continue', canvas.width / 2, canvas.height / 2 + 40);
+  }
+}
+
+function drawWinScreen() {
+  winTimer++;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  const fadeIn = Math.min(1, winTimer / 120);
+  
+  if (currentAct === 1) {
+    transitionText = 'The vault groans open.';
+    transitionSubtext = 'Your Voice steps through — toward Para, the birthplace of feeling.';
+    transitionActLabel = 'Act I Complete';
+  } else if (currentAct === 2) {
+    transitionText = 'The seeds remember their voice.';
+    transitionSubtext = 'Your Voice ascends — toward Pashyanti, where thought takes shape.';
+    transitionActLabel = 'Act II Complete';
+  } else if (currentAct === 3) {
+    transitionText = 'The mirrors shatter. The shadow dissolves.';
+    transitionSubtext = 'Your Voice presses on — toward Madhyama, where words are forged.';
+    transitionActLabel = 'Act III Complete';
+  } else if (currentAct === 4) {
+    transitionText = 'The machinery groans. A word slips through.';
+    transitionSubtext = 'Your Voice breaks free — toward Vaikhari, the trembling edge of speech.';
+    transitionActLabel = 'Act IV Complete';
+  }
+  
+  ctx.fillStyle = `rgba(212,160,86,${fadeIn})`;
+  ctx.font = scaledFont('2vw Georgia');
+  ctx.textAlign = 'center';
+  ctx.fillText(transitionText, canvas.width / 2, canvas.height / 2 - 40);
+  
+  ctx.fillStyle = `rgba(102,85,51,${fadeIn})`;
+  ctx.font = scaledFont('1.2vw Georgia');
+  ctx.fillText(transitionSubtext, canvas.width / 2, canvas.height / 2 + 20);
+  
+  ctx.fillStyle = `rgba(68,51,34,${fadeIn})`;
+  ctx.font = scaledFont('0.8vw Georgia');
+  ctx.fillText(transitionActLabel, canvas.width / 2, canvas.height / 2 + 80);
+  
+  // Show continue prompt after delay
+  if (winTimer > 240) {
+    const nextAct = currentAct + 1;
+    if (LEVELS[nextAct]) {
+      const blink = Math.sin(frameCount * 0.06) * 0.3 + 0.5;
+      ctx.fillStyle = `rgba(212,160,86,${blink})`;
+      ctx.font = scaledFont('0.9vw Georgia');
+      ctx.fillText('Tap to continue', canvas.width / 2, canvas.height / 2 + 140);
+    } else {
+      ctx.fillStyle = 'rgba(100,80,50,0.6)';
+      ctx.font = scaledFont('0.9vw Georgia');
+      ctx.fillText('More acts coming soon...', canvas.width / 2, canvas.height / 2 + 140);
+    }
+  }
+}
+
+
+// ═══════════════════════════════════════════════
+// VISUAL TOUR SYSTEM
+// ═══════════════════════════════════════════════
+
+const TOUR_DATA = {
+  1: [
+    { x: 3, y: 27, caption: "You begin here — a fragile glow wrapped in rags, exiled to the deepest slum of forgotten memory.", dur: 220 },
+    { x: 2, y: 27, caption: "This is a Shell — the hollow husk of a borrowed thought. Press F to hide inside. The Nightmares cannot see you within.", dur: 220 },
+    { x: 12, y: 24, caption: "Nightmares — feral creatures born from suppressed anger. Their red gaze sweeps for anything authentic. Learn their patterns.", dur: 240 },
+    { x: 11, y: 22, caption: "Collect 3 glowing Keys to unlock the vault door and escape this graveyard of exiled thoughts.", dur: 200 },
+    { x: 8, y: 24, caption: "Crumbling platforms — the decay of untended memory. They collapse seconds after you stand on them.", dur: 200 },
+    { x: 4, y: 27, caption: "Candles mark sanctuaries — checkpoints where your light is briefly safe. Touch them to remember this place.", dur: 200 },
+  ],
+  2: [
+    { x: 3, y: 27, caption: "Para — the birthplace of feeling, frozen into a prison of solitary confinement.", dur: 220 },
+    { x: 12, y: 24, caption: "Dormant seeds — the ghosts of intentions never acted upon. They flicker as dashed outlines, waiting to be remembered.", dur: 240 },
+    { x: 20, y: 15, caption: "The Searchlights of Self-Doubt — they sweep endlessly, hunting for any sign of authentic expression.", dur: 240 },
+    { x: 15, y: 20, caption: "Use Resonance (E) to awaken seeds into bridges of light. But if a Searchlight catches you pulsing — lockdown.", dur: 240 },
+    { x: 3, y: 27, caption: "The tension: you need Resonance to cross the void, but Resonance makes you visible. Time your pulses between sweeps.", dur: 220 },
+  ],
+  3: [
+    { x: 3, y: 27, caption: "Pashyanti — the hall where feeling tries to take shape, but insecurity distorts everything into terrifying illusion.", dur: 220 },
+    { x: 40, y: 15, caption: "Light Sources — walk into their radius and your shadow grows into a giant that will crush you. The dashed red circle marks the boundary.", dur: 260 },
+    { x: 12, y: 23, caption: "Push these blocks between yourself and the light to create safe corridors through the danger zones.", dur: 240 },
+    { x: 12, y: 21, caption: "Hypnotic Statues — Borrowed Dreams that slow your movement with their beauty. Shatter them with Resonance to reveal the emptiness beneath.", dur: 260 },
+    { x: 3, y: 27, caption: "Navigate the blinding maze by controlling light and shadow. What you see is not always what is real.", dur: 200 },
+  ],
+  4: [
+    { x: 3, y: 27, caption: "Madhyama — the factory of social conditioning, where raw feeling is stamped into acceptable language.", dur: 220 },
+    { x: 15, y: 25, caption: "Gatekeepers — faceless bureaucrats that scan for originality. The orange bar shows when their next scan is coming.", dur: 260 },
+    { x: 8, y: 26, caption: "Shells are essential here. Climb inside to disguise your light as borrowed words. Scans pass harmlessly over hollow shells.", dur: 260 },
+    { x: 12, y: 26, caption: "Conveyor belts carry you through the machinery. Ride them inside a Shell, leap out only when you must.", dur: 220 },
+    { x: 3, y: 27, caption: "Smuggle yourself through the border of logic. Exit a Shell only in blind spots between Gatekeeper scans.", dur: 220 },
+  ],
+  5: [
+    { x: 15, y: 45, caption: "Vaikhari — the final push. The censorship system has triggered a total purge to silence you forever.", dur: 220 },
+    { x: 15, y: 35, caption: "The Censor rises from below — a wall of pure darkness that accelerates. If it touches you, you are silenced.", dur: 240 },
+    { x: 15, y: 25, caption: "There is no more hiding. No shells. No stealth. Only the desperate climb toward spoken expression.", dur: 220 },
+    { x: 15, y: 5, caption: "Reach the top. Break through. Become spoken. Your words are waiting.", dur: 240 },
+  ]
+};
+
+let tourStops = [];
+let tourIndex = 0;
+let tourTimer = 0;
+let tourReady = false;
+let tourCameraX = 0;
+let tourCameraY = 0;
+let tourTargetX = 0;
+let tourTargetY = 0;
+let tourCaption = '';
+let tourCaptionAlpha = 0;
+let tourActLoaded = 0;
+
+function startTour(act) {
+  // Load the level so we can render it during the tour
+  tourActLoaded = act;
+  loadLevel(LEVELS[act][1]); // Tour always shows stage 1
+  
+  // Spawn entities so they're visible during tour
+  nightmares = []; searchlights = []; lightSources = []; pushableBlocks = []; hypnoticStatues = [];
+  gatekeepers = []; conveyorTiles = [];
+  if (act === 1) spawnNightmares();
+  else if (act === 2) spawnSearchlights();
+  else if (act === 3) spawnAct3Entities();
+  else if (act === 4) spawnAct4Entities();
+  
+  tourStops = TOUR_DATA[act] || [];
+  tourIndex = 0;
+  tourTimer = 0;
+  tourReady = false;
+  tourCaption = '';
+  tourCaptionAlpha = 0;
+  
+  if (tourStops.length > 0) {
+    const stop = tourStops[0];
+    tourCameraX = stop.x * TILE - canvas.width / 2;
+    tourCameraY = stop.y * TILE - canvas.height / 2;
+    tourTargetX = tourCameraX;
+    tourTargetY = tourCameraY;
+    tourCaption = stop.caption;
+  }
+  
+  gameState = 'tour';
+  setTimeout(() => { tourReady = true; }, 500);
+}
+
+function advanceTour() {
+  tourIndex++;
+  tourTimer = 0;
+  tourCaptionAlpha = 0;
+  
+  if (tourIndex >= tourStops.length) {
+    // Tour complete — begin gameplay
+    gameState = 'tourEnd';
+    setTimeout(() => { beginAct(tourActLoaded); }, 800);
+    return;
+  }
+  
+  const stop = tourStops[tourIndex];
+  tourTargetX = stop.x * TILE - canvas.width / 2;
+  tourTargetY = stop.y * TILE - canvas.height / 2;
+  tourCaption = stop.caption;
+  tourReady = false;
+  setTimeout(() => { tourReady = true; }, 1000);
+}
+
+function updateTour() {
+  if (gameState !== 'tour') return;
+  tourTimer++;
+  
+  // Smooth camera pan
+  tourCameraX += (tourTargetX - tourCameraX) * 0.03;
+  tourCameraY += (tourTargetY - tourCameraY) * 0.03;
+  
+  // Caption fade in
+  tourCaptionAlpha = Math.min(1, tourTimer / 60);
+  
+  // Auto-advance after duration
+  if (tourStops[tourIndex] && tourTimer > tourStops[tourIndex].dur && tourReady) {
+    advanceTour();
+  }
+  
+  // Update entities for animation
+  if (tourActLoaded === 1) updateNightmares();
+  if (tourActLoaded === 2) updateSearchlights();
+}
+
+function drawTour() {
+  // Set camera for rendering
+  const savedCamX = camera.x;
+  const savedCamY = camera.y;
+  camera.x = Math.max(0, Math.min(tourCameraX, tileMap[0].length * TILE - canvas.width));
+  camera.y = Math.max(0, Math.min(tourCameraY, tileMap.length * TILE - canvas.height));
+  
+  drawBackground();
+  drawTiles();
+  drawNightmares();
+  drawSearchlights();
+  drawAct3Entities();
+  drawAct4Entities();
+  drawVignette();
+  
+  // Cinematic bars (letterbox)
+  const barH = canvas.height * 0.1;
+  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  ctx.fillRect(0, 0, canvas.width, barH);
+  ctx.fillRect(0, canvas.height - barH, canvas.width, barH);
+  
+  // Caption text
+  if (tourCaption && tourCaptionAlpha > 0) {
+    // Background for caption
+    const captionY = canvas.height - barH - 60;
+    ctx.fillStyle = `rgba(0,0,0,${tourCaptionAlpha * 0.6})`;
+    ctx.fillRect(canvas.width * 0.1, captionY - 15, canvas.width * 0.8, 50);
+    
+    ctx.fillStyle = `rgba(212,160,86,${tourCaptionAlpha})`;
+    ctx.font = scaledFont('0.85vw Georgia');
+    ctx.textAlign = 'center';
+    
+    // Word wrap
+    const words = tourCaption.split(' ');
+    let lines = [];
+    let currentLine = '';
+    const maxWidth = canvas.width * 0.7;
+    for (const word of words) {
+      const testLine = currentLine ? currentLine + ' ' + word : word;
+      if (ctx.measureText(testLine).width > maxWidth) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    lines.push(currentLine);
+    
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], canvas.width / 2, captionY + i * 22);
+    }
+  }
+  
+  // "Press any key" prompt
+  if (tourReady) {
+    const blink = 0.3 + Math.sin(frameCount * 0.06) * 0.2;
+    ctx.fillStyle = `rgba(150,120,70,${blink})`;
+    ctx.font = scaledFont('0.65vw Georgia');
+    ctx.textAlign = 'center';
+    ctx.fillText('tap to continue', canvas.width / 2, canvas.height - barH / 2 + 4);
+  }
+  
+  camera.x = savedCamX;
+  camera.y = savedCamY;
+}
+// ═══════════════════════════════════════════════
+
+const PROLOGUE_TEXT = `You are not a person. You are a feeling.\n\nBorn in the depths of a mind that has forgotten how to speak its truth. For years, this mind has survived by echoing the outside world, swallowing its own voice to stay safe. But you cannot be swallowed anymore.\n\nYour journey is the journey of speech — from the silent birth of a thought, through the crushing machinery of logic, to the trembling release of the spoken word.\n\nThe mind will fight you. It will try to censor you.\nSurvive. Ascend. Become spoken.`;
+
+const BRIEFINGS = {
+  1: {
+    label: 'ACT I',
+    title: 'THE DREAM',
+    subtitle: 'The Graveyard of Exiled Thoughts',
+    meaning: 'Authentic feelings that are denied expression are banished here to rot. Over time, suppressed anger mutates into Nightmares. You must escape the subconscious to begin your journey to the surface.',
+    survive: 'You are fragile and weaponless. Stay in the shadows. Use the heavy blocks of \'Abandoned Thoughts\' to hide from the sweeping gaze of the Nightmares. Watch their patterns. Move only in the dark.',
+    tips: [
+      { icon: '🎨', text: 'Sepia/brown decaying palette — you are deep in forgotten memory' },
+      { icon: '🕷️', text: 'Spider-like <span>Nightmares</span> patrol with red vision cones — stay out of their sight' },
+      { icon: '🔑', text: 'Find <span>3 Keys</span> scattered across the slums to unlock the vault door' },
+      { icon: '📦', text: '<span>Shells</span> (dark husks) let you hide from enemies — use the Shell button near one' },
+      { icon: '⚠️', text: '<span>Crumbling platforms</span> collapse ~1.5 seconds after you stand on them' },
+      { icon: '🕯️', text: 'Candles are <span>checkpoints</span> — you respawn at the last one you touched' },
+    ],
+    controls: [
+      { key: '◀ ▶ buttons', action: 'Move left/right' },
+      { key: 'JUMP button', action: 'Jump (tap again mid-air for double jump)' },
+      { key: 'F (shell) button', action: 'Enter/exit Shell near dark husks' },
+    ]
+  },
+  2: {
+    label: 'ACT II',
+    title: 'PARA',
+    subtitle: 'The Void of Origin',
+    meaning: 'The deepest layer of the mind, where pure intent is born. It should be a warm sanctuary, but years of self-censorship have turned it into a cold, heavily guarded prison of solitary confinement.',
+    survive: 'You have awakened your Resonance. Use Resonance to emit a pulse of pure intent. Use it to awaken dormant seeds of light and build your path across the void. But beware: your Resonance attracts the Searchlights of Self-Doubt. Pulse only when safe.',
+    tips: [
+      { icon: '🧊', text: 'Cold <span>blue/grey</span> palette — you are in the frozen prison of feeling' },
+      { icon: '🔦', text: '<span>3 Searchlights</span> sweep back and forth — they detect Resonance usage' },
+      { icon: '🌱', text: '<span>Dormant seed bridges</span> (faint dashed outlines) become solid when hit with Resonance' },
+      { icon: '⏱️', text: 'Seeds stay active for <span>6 seconds</span> — they flash red before expiring' },
+      { icon: '💀', text: 'Using Resonance while a searchlight is on you = <span>instant lockdown</span>' },
+      { icon: '🔑', text: 'Collect <span>3 seeds</span> and reach the exit at the top-right' },
+    ],
+    controls: [
+      { key: '◀ ▶ buttons', action: 'Move left/right' },
+      { key: 'JUMP button', action: 'Jump / Double Jump' },
+      { key: 'E (pulse) button', action: 'Resonance Pulse — activates seeds (3s cooldown)' },
+    ]
+  },
+  3: {
+    label: 'ACT III',
+    title: 'PASHYANTI',
+    subtitle: 'The Hall of Distorted Mirrors',
+    meaning: 'The stage of visualization. Here, a feeling tries to take a shape. But the mind\'s insecurities and traumas distort everything beautiful into terrifying, exaggerated illusions of what it thinks it should be.',
+    survive: 'Your shadow is both your tool and your enemy. Manipulate light sources by pushing blocks to stay in darkness. When your path is blocked by golden, hypnotic illusions, use Resonance to shatter their lies and reveal the wireframe beneath.',
+    tips: [
+      { icon: '☀️', text: '<span>Blindingly bright</span> white palette — the opposite of Acts I & II' },
+      { icon: '👤', text: 'Walking into <span>light sources</span> creates a Shadow Giant — stay too long and it crushes you' },
+      { icon: '📦', text: '<span>Push grey blocks</span> between yourself and lights to block them' },
+      { icon: '🗿', text: '<span>Hypnotic Statues</span> (purple aura) slow your movement — shatter them with Resonance' },
+      { icon: '⚡', text: 'Shadow Giant eyes turn <span>red</span> = 1 second until death — move to shadow immediately' },
+      { icon: '🔑', text: 'Collect <span>3 keys</span> while navigating light and shadow to reach the exit' },
+    ],
+    controls: [
+      { key: '◀ ▶ buttons', action: 'Move (walk into blocks to push them)' },
+      { key: 'JUMP button', action: 'Jump / Double Jump' },
+      { key: 'E (pulse) button', action: 'Resonance Pulse — shatters statues' },
+    ]
+  },
+  4: {
+    label: 'ACT IV',
+    title: 'MADHYAMA',
+    subtitle: 'The Border of Logic',
+    meaning: 'The machinery of social conditioning. Here, raw feeling is processed into \'acceptable\' language. The Gatekeepers will incinerate anything original. They only allow hollow, borrowed words to pass to the surface.',
+    survive: 'Pure truth cannot walk here openly. You must find the heavy, robotic Shells of borrowed words and climb inside. Walk like them to bypass the security scanners. Step out of the Shell only when necessary to jump and navigate, but never let a Gatekeeper catch you exposed.',
+    tips: [
+      { icon: '🏭', text: 'Dark <span>industrial palette</span> — grinding factory of social conditioning' },
+      { icon: '🤖', text: '<span>Gatekeepers</span> patrol and emit scans every few seconds — the orange bar shows when the next scan is coming' },
+      { icon: '💀', text: 'If a scan hits you <span>outside a Shell</span> = instant incineration' },
+      { icon: '🛡️', text: '<span>Shells (dark husks)</span> protect you from scans — use the Shell button to enter/exit' },
+      { icon: '⚙️', text: '<span>Conveyor belts</span> (orange arrows) push you sideways — ride them in a Shell' },
+      { icon: '🔑', text: 'Collect <span>3 keys</span> while smuggling yourself past the Gatekeepers' },
+    ],
+    controls: [
+      { key: '◀ ▶ buttons', action: 'Move left/right' },
+      { key: 'JUMP button', action: 'Jump / Double Jump (NOT in Shell)' },
+      { key: 'F (shell) button', action: 'Enter/Exit Shell — CRITICAL' },
+    ]
+  },
+  5: {
+    label: 'ACT V',
+    title: 'VAIKHARI',
+    subtitle: 'The Trembling Ascent',
+    meaning: 'The final push to spoken expression. The internal censorship system is in full panic. It is initiating a total purge to crush you before you reach the outside world. This is the desperate struggle to finally speak.',
+    survive: 'There is no more hiding. Run. Climb. Do not stop. The Censor is rising beneath you — a wall of pure darkness consuming everything. Use continuous Resonance pulses to blast your way upward. Throw yourself into the light.',
+    tips: [
+      { icon: '🔴', text: '<span>Fleshy red/dark palette</span> — the mind is in panic mode' },
+      { icon: '⬆️', text: '<span>Vertical chase</span> — the camera scrolls UP. Keep climbing or die' },
+      { icon: '🌊', text: 'The <span>Censor</span> is a rising wall of darkness — it accelerates over time' },
+      { icon: '🚫', text: '<span>No stealth, no hiding</span> — pure speed and platforming' },
+      { icon: '💫', text: 'Use <span>Resonance (E button)</span> freely — no penalties here, just blast through' },
+      { icon: '🏁', text: 'Reach the <span>top</span> to break through to Vaikhari — spoken expression' },
+    ],
+    controls: [
+      { key: '◀ ▶ buttons', action: 'Move FAST' },
+      { key: 'JUMP button', action: 'Jump / Double Jump — chain them!' },
+      { key: 'E (pulse) button', action: 'Resonance Pulse — use freely' },
+    ]
+  }
+};
+
+let briefingReady = false;
+let playerThought = "...I need to tell you something."; // default if they skip
+
+function submitThought() {
+  const textarea = document.getElementById('player-thought');
+  const text = textarea.value.trim();
+  if (text.length > 0) playerThought = text;
+  const screen = document.getElementById('input-screen');
+  screen.style.transition = 'opacity 1.5s ease';
+  screen.style.opacity = '0';
+  setTimeout(() => {
+    screen.style.display = 'none';
+    showBriefing(1);
+  }, 1500);
+}
+
+function showInputScreen() {
+  gameState = 'input';
+  const screen = document.getElementById('input-screen');
+  screen.style.display = 'flex';
+  screen.style.opacity = '0';
+  screen.style.transition = 'opacity 2s ease';
+  setTimeout(() => { screen.style.opacity = '1'; }, 100);
+  setTimeout(() => {
+    document.getElementById('player-thought').focus();
+  }, 2200);
+}
+
+function showPrologue() {
+  gameState = 'prologue';
+  const screen = document.getElementById('prologue-screen');
+  const textEl = document.getElementById('prologue-text');
+  const contEl = document.getElementById('prologue-continue');
+  screen.style.display = 'flex';
+  
+  // Typewriter-style fade in of text
+  textEl.innerHTML = PROLOGUE_TEXT.replace(/\n/g, '<br>');
+  textEl.style.transition = 'opacity 3s ease';
+  setTimeout(() => { textEl.style.opacity = '1'; }, 300);
+  setTimeout(() => { 
+    contEl.style.transition = 'opacity 1s ease';
+    contEl.style.opacity = '1'; 
+    briefingReady = true;
+  }, 5000);
+}
+
+function hidePrologue() {
+  const screen = document.getElementById('prologue-screen');
+  screen.style.transition = 'opacity 1.5s ease';
+  screen.style.opacity = '0';
+  setTimeout(() => { screen.style.display = 'none'; screen.style.opacity = '1'; }, 1500);
+}
+
+function showBriefing(act) {
+  const data = BRIEFINGS[act];
+  if (!data) return;
+  
+  gameState = 'briefing';
+  briefingReady = false;
+  
+  document.getElementById('brief-label').textContent = data.label;
+  document.getElementById('brief-title').textContent = data.title;
+  document.getElementById('brief-subtitle').textContent = data.subtitle;
+  document.getElementById('brief-meaning').innerHTML = data.meaning;
+  document.getElementById('brief-survive').innerHTML = data.survive;
+  
+  // Tips
+  const tipsEl = document.getElementById('brief-tips');
+  tipsEl.innerHTML = '';
+  data.tips.forEach(tip => {
+    const div = document.createElement('div');
+    div.className = 'tip';
+    div.innerHTML = `${tip.icon}&nbsp;&nbsp;${tip.text}`;
+    tipsEl.appendChild(div);
+  });
+  
+  // Controls
+  const ctrlEl = document.getElementById('brief-controls');
+  ctrlEl.innerHTML = '';
+  data.controls.forEach(ctrl => {
+    const div = document.createElement('div');
+    div.className = 'tip';
+    div.innerHTML = `<span>[${ctrl.key}]</span>&nbsp;&nbsp;${ctrl.action}`;
+    ctrlEl.appendChild(div);
+  });
+  
+  const screen = document.getElementById('briefing-screen');
+  screen.classList.add('show');
+  screen.style.opacity = '0';
+  screen.style.transition = 'opacity 1.5s ease';
+  setTimeout(() => { screen.style.opacity = '1'; }, 50);
+  setTimeout(() => { briefingReady = true; }, 2000);
+}
+
+function hideBriefing() {
+  const screen = document.getElementById('briefing-screen');
+  screen.style.transition = 'opacity 1s ease';
+  screen.style.opacity = '0';
+  setTimeout(() => { screen.classList.remove('show'); }, 1000);
+}
+
+// ── GAME LOOP ──
+function update() {
+  frameCount++;
+  if (gameState === 'tour') { updateTour(); return; }
+  if (paused) {
+    // Map scroll while paused
+    if (mapMode) {
+      const levelW = tileMap[0] ? tileMap[0].length * TILE : canvas.width;
+      const levelH = tileMap.length * TILE;
+      if (keys['ArrowLeft'] || keys['KeyA']) mapCameraX -= MAP_SCROLL_SPEED;
+      if (keys['ArrowRight'] || keys['KeyD']) mapCameraX += MAP_SCROLL_SPEED;
+      if (keys['ArrowUp'] || keys['KeyW']) mapCameraY -= MAP_SCROLL_SPEED;
+      if (keys['ArrowDown'] || keys['KeyS']) mapCameraY += MAP_SCROLL_SPEED;
+      mapCameraX = Math.max(0, Math.min(mapCameraX, levelW - canvas.width));
+      mapCameraY = Math.max(0, Math.min(mapCameraY, levelH - canvas.height));
+    }
+    return;
+  }
+  if (gameState !== 'playing') return;
+  
+  // Clarity power update
+  if (clarityActive) {
+    clarityTimer--;
+    if (clarityTimer <= 0) { clarityActive = false; clarityTimer = 0; }
+  }
+  if (clarityFlashTimer > 0) clarityFlashTimer--;
+  
+  // Player always updates at full speed
+  updatePlayer();
+  
+  // World updates at reduced speed during Clarity
+  const shouldUpdateWorld = !clarityActive || (frameCount % Math.round(1 / CLARITY_SLOWDOWN) === 0);
+  if (shouldUpdateWorld) {
+    updateNightmares();
+    updateSearchlights();
+    updateAct3();
+    updateAct4();
+    updateAct5();
+  }
+  
+  updateParticles();
+  updateFloatingTexts();
+  updateCamera();
+}
+
+function render() {
+  ctx.save();
+
+  // Hide/show touch controls based on game state
+  const touchEl = document.getElementById('touch-controls');
+  if (touchEl) {
+    const isGameplay = gameState === 'playing' || paused;
+    touchEl.style.display = isGameplay ? 'block' : 'none';
+    
+    // Show MAP button and down arrow only when paused
+    const mapBtn = document.getElementById('btn-map');
+    const downBtn = document.getElementById('dpad-down');
+    if (mapBtn) mapBtn.style.display = paused ? 'flex' : 'none';
+    if (downBtn) downBtn.style.display = (paused && mapMode) ? 'flex' : 'none';
+  }
+
+  // Screen shake
+  if (screenShake > 0) {
+    ctx.translate(
+      Math.random() * screenShake - screenShake / 2,
+      Math.random() * screenShake - screenShake / 2
+    );
+  }
+
+  if (gameState === 'playing' || paused) {
+    // In map mode, use the map camera; otherwise normal camera
+    const savedCamX = camera.x;
+    const savedCamY = camera.y;
+    if (paused && mapMode) {
+      camera.x = mapCameraX;
+      camera.y = mapCameraY;
+    }
+    
+    drawBackground();
+    drawTiles();
+    drawNightmares();
+    drawSearchlights();
+    drawAct3Entities();
+    drawAct4Entities();
+    drawAct5Entities();
+    drawPlayer();
+    drawParticles();
+    drawFloatingTexts();
+    drawVignette();
+    drawHintOverlay();
+    drawEffects();
+    
+    if (paused && mapMode) {
+      camera.x = savedCamX;
+      camera.y = savedCamY;
+    }
+    
+    // Pause overlay
+    if (paused) {
+      // Dim overlay
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      ctx.textAlign = 'center';
+      
+      if (mapMode) {
+        // Map mode header
+        ctx.fillStyle = 'rgba(212,160,86,0.8)';
+        ctx.font = scaledFont('1.4vw Georgia');
+        ctx.fillText('MAP VIEW', canvas.width / 2, 40);
+        
+        ctx.fillStyle = 'rgba(150,120,70,0.6)';
+        ctx.font = scaledFont('0.75vw Georgia');
+        if (isMobile) {
+          ctx.fillText('Use ◀ ▶ ▲ to scroll · Tap ⏸ to resume', canvas.width / 2, 70);
+        } else {
+          ctx.fillText('Arrow keys to scroll · M to exit map · P or Esc to resume', canvas.width / 2, 70);
+        }
+        
+        // Player position marker
+        const px = player.x - mapCameraX;
+        const py = player.y - mapCameraY;
+        if (px > -20 && px < canvas.width + 20 && py > -20 && py < canvas.height + 20) {
+          // Pulsing marker at player position
+          const markerPulse = 0.6 + Math.sin(frameCount * 0.1) * 0.4;
+          ctx.strokeStyle = `rgba(212,160,86,${markerPulse})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(px, py, 15 + Math.sin(frameCount * 0.08) * 3, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = `rgba(212,160,86,${markerPulse * 0.5})`;
+          ctx.font = scaledFont('10px Georgia');
+          ctx.fillText('▼ YOU', px, py - 22);
+        }
+        
+        // Minimap indicator (where you're looking relative to whole level)
+        const levelW = tileMap[0] ? tileMap[0].length * TILE : 1;
+        const levelH = tileMap.length * TILE;
+        const mmW = 120, mmH = 60;
+        const mmX = canvas.width - mmW - 15, mmY = canvas.height - mmH - 15;
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(mmX, mmY, mmW, mmH);
+        ctx.strokeStyle = 'rgba(100,80,50,0.4)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(mmX, mmY, mmW, mmH);
+        // View rectangle
+        const vx = mmX + (mapCameraX / levelW) * mmW;
+        const vy = mmY + (mapCameraY / levelH) * mmH;
+        const vw = (canvas.width / levelW) * mmW;
+        const vh = (canvas.height / levelH) * mmH;
+        ctx.strokeStyle = 'rgba(212,160,86,0.6)';
+        ctx.strokeRect(vx, vy, vw, vh);
+        // Player dot on minimap
+        const pdx = mmX + (player.x / levelW) * mmW;
+        const pdy = mmY + (player.y / levelH) * mmH;
+        ctx.fillStyle = 'rgba(212,160,86,0.8)';
+        ctx.beginPath();
+        ctx.arc(pdx, pdy, 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Normal pause screen
+        ctx.fillStyle = 'rgba(212,160,86,0.8)';
+        ctx.font = scaledFont('1.8vw Georgia');
+        ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2 - 40);
+        
+        ctx.fillStyle = 'rgba(150,120,70,0.6)';
+        ctx.font = scaledFont('0.8vw Georgia');
+        if (isMobile) {
+          ctx.fillText('Tap ⏸ to Resume', canvas.width / 2, canvas.height / 2 + 10);
+          ctx.fillText('Tap MAP below to explore the level', canvas.width / 2, canvas.height / 2 + 40);
+        } else {
+          ctx.fillText('P or Esc — Resume', canvas.width / 2, canvas.height / 2 + 10);
+          ctx.fillText('M — Open Map View (scroll with arrow keys)', canvas.width / 2, canvas.height / 2 + 40);
+        }
+        
+        // Show current status
+        ctx.fillStyle = 'rgba(100,80,50,0.5)';
+        ctx.font = scaledFont('0.7vw Georgia');
+        if (player.keysNeeded > 0) {
+          ctx.fillText(`Keys: ${player.keys} / ${player.keysNeeded}`, canvas.width / 2, canvas.height / 2 + 80);
+        }
+        const actNames = ['', 'The Dream', 'Para', 'Pashyanti', 'Madhyama', 'Vaikhari'];
+        ctx.fillText(`Act ${currentAct}: ${actNames[currentAct] || ''}`, canvas.width / 2, canvas.height / 2 + 105);
+      }
+    }
+  } else if (gameState === 'tour') {
+    drawTour();
+  } else if (gameState === 'stageTransition') {
+    drawStageTransition();
+  } else if (gameState === 'win') {
+    drawWinScreen();
+  } else if (gameState === 'ending') {
+    drawEnding();
+  } else if (gameState === 'gameover') {
+    drawGameOver();
+  }
+
+  ctx.restore();
+}
+
+function gameLoop() {
+  // Don't run the game while the rotate-notice is visible (portrait on mobile)
+  const rotateNotice = document.getElementById('rotate-notice');
+  if (rotateNotice && rotateNotice.style.display === 'flex' ||
+      (rotateNotice && getComputedStyle(rotateNotice).display === 'flex')) {
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+  update();
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+// ── Start ──
+function startGame() {
+  if (gameState !== 'title') return;
+  
+  // Request fullscreen to hide address bar
+  try {
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    else if (el.msRequestFullscreen) el.msRequestFullscreen();
+  } catch(e) {}
+  
+  // Lock to landscape if possible
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    }
+  } catch(e) {}
+  
+  initAudio();
+  document.getElementById('title-screen').classList.add('fade-out');
+  setTimeout(() => {
+    showPrologue();
+  }, 2000);
+}
+
+function beginAct(act) {
+  // Called from briefing/tour — starts stage 1 of the act
+  currentAct = act;
+  currentStage = 1;
+  beginStage(act, 1);
+}
+
+function beginStage(act, stage) {
+  currentAct = act;
+  currentStage = stage;
+  
+  // Start ambient music for this act
+  startAmbient(act);
+  stageTransTimer = 0;
+  winTimer = 0;
+  frameCount = 0;
+  particles = [];
+  floatingTexts = [];
+  activatedSeeds = {};
+  player.crumbleTiles = {};
+  player.keys = 0;
+  player.dead = false;
+  player.inShell = false;
+  player.shellTransition = 0;
+  player.resonanceActive = false;
+  player.resonanceRadius = 0;
+  player.resonanceCooldown = 0;
+  player.hasDoubleJumped = false;
+  player.vx = 0;
+  player.vy = 0;
+  deathFade = 0;
+  screenShake = 0;
+  nightmares = [];
+  searchlights = [];
+  lightSources = [];
+  pushableBlocks = [];
+  hypnoticStatues = [];
+  conveyorTiles = [];
+  gatekeepers = [];
+  
+  // Clarity: deactivate if active, but KEEP earned fragments across stages
+  clarityActive = false;
+  clarityTimer = 0;
+  // clarityFragments preserved — only lost on death (in respawn)
+  
+  // Stage-based keysNeeded: stage 1 = 0 (just exit), stage 2 = 1, stage 3 = 2
+  player.keysNeeded = stage === 1 ? 0 : stage === 2 ? 1 : 2;
+  
+  // Load level for this act+stage
+  const levelData = LEVELS[act] && LEVELS[act][stage];
+  if (!levelData) { console.error('No level for act', act, 'stage', stage); return; }
+  
+  try {
+    loadLevel(levelData);
+  } catch(e) {
+    console.error('loadLevel failed:', e, 'act:', act, 'stage:', stage);
+    return;
+  }
+  
+  // Remove keys from level based on how many this stage needs
+  if (player.keysNeeded < 3 && tileMap.length > 0 && tileMap[0]) {
+    const keyPositions = [];
+    for (let y = 0; y < tileMap.length; y++) {
+      for (let x = 0; x < (tileMap[y] ? tileMap[y].length : 0); x++) {
+        if (tileMap[y][x] === 5) keyPositions.push({ x, y });
+      }
+    }
+    for (let i = player.keysNeeded; i < keyPositions.length; i++) {
+      tileMap[keyPositions[i].y][keyPositions[i].x] = 0;
+    }
+  }
+  
+  // Default spawn
+  player.x = 3 * TILE;
+  player.y = 27 * TILE;
+  player.checkpointX = 3 * TILE;
+  player.checkpointY = 27 * TILE;
+  
+  // Act-specific entity spawning with stage difficulty scaling
+  if (currentAct === 1) {
+    spawnNightmares();
+    // Stage 2+: add extra nightmares
+    if (stage >= 2) {
+      nightmares.push({
+        x: 30 * TILE, y: 20 * TILE,
+        waypoints: [{ x: 25 * TILE, y: 20 * TILE }, { x: 38 * TILE, y: 20 * TILE }],
+        wpIndex: 0, wpDir: 1, speed: 1.2, facing: -1,
+        visionAngle: 0, visionRange: 180, visionCone: Math.PI / 3,
+        alerted: false, alertTimer: 0, legPhase: 0
+      });
+    }
+    if (stage >= 3) {
+      nightmares.push({
+        x: 50 * TILE, y: 12 * TILE,
+        waypoints: [{ x: 45 * TILE, y: 12 * TILE }, { x: 58 * TILE, y: 12 * TILE }],
+        wpIndex: 0, wpDir: 1, speed: 1.4, facing: 1,
+        visionAngle: 0, visionRange: 190, visionCone: Math.PI / 3,
+        alerted: false, alertTimer: 0, legPhase: 0
+      });
+    }
+  } else if (currentAct === 2) {
+    spawnSearchlights();
+    // Stage 2+: faster searchlights
+    if (stage >= 2) {
+      searchlights.forEach(sl => sl.speed *= 1.3);
+    }
+    if (stage >= 3) {
+      searchlights.forEach(sl => sl.speed *= 1.2);
+      // Add an extra searchlight
+      searchlights.push({ x: 40 * TILE, y: 15 * TILE, angle: 0, speed: 0.015, range: 250, dir: 1 });
+    }
+  } else if (currentAct === 3) {
+    spawnAct3Entities();
+  } else if (currentAct === 4) {
+    spawnAct4Entities();
+    // Stage 2+: faster gatekeeper scans
+    if (stage >= 2) {
+      gatekeepers.forEach(gk => gk.scanInterval = Math.max(100, gk.scanInterval - 30));
+    }
+    if (stage >= 3) {
+      gatekeepers.forEach(gk => { gk.scanInterval = Math.max(80, gk.scanInterval - 20); gk.speed *= 1.3; });
+    }
+  } else if (currentAct === 5) {
+    player.evolution = 12;
+    player.evolutionTarget = 12;
+    
+    player.x = 15 * TILE;
+    player.y = 47 * TILE;
+    player.checkpointX = 15 * TILE;
+    player.checkpointY = 47 * TILE;
+    
+    act5Lives = 3;
+    act5DeathPause = 0;
+    gameOver = false;
+    initCensor(); // resets censorSpeed to 0.8 unconditionally
+    
+    // Stage difficulty: censor speed override (applied after initCensor)
+    if (stage === 2) { censorSpeed = 1.0; }
+    if (stage === 3) { censorSpeed = 1.2; }
+  }
+  
+  gameState = 'playing';
+}
+
+gameLoop();
+
+// ═══════════════════════════════════════════
+// TOUCH CONTROLS
+// ═══════════════════════════════════════════
+
+const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+  || ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+if (isMobile) {
+  document.body.style.cursor = 'default';
+  
+  // Wait for DOM to be ready since touch-controls div is after this script
+  function initTouchControls() {
+    const touchEl = document.getElementById('touch-controls');
+    if (!touchEl) { setTimeout(initTouchControls, 50); return; }
+    touchEl.style.display = 'block';
+  
+  const touchState = {};
+  
+  function setKey(code, down) {
+    keys[code] = down;
+  }
+  
+  function bindTouch(id, keyCode, extraAction) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    
+    el.addEventListener('touchstart', e => {
+      e.preventDefault();
+      el.classList.add('pressed');
+      setKey(keyCode, true);
+      if (extraAction) extraAction(true);
+    }, { passive: false });
+    
+    el.addEventListener('touchend', e => {
+      e.preventDefault();
+      el.classList.remove('pressed');
+      setKey(keyCode, false);
+      if (extraAction) extraAction(false);
+    }, { passive: false });
+    
+    el.addEventListener('touchcancel', e => {
+      el.classList.remove('pressed');
+      setKey(keyCode, false);
+      if (extraAction) extraAction(false);
+    });
+  }
+  
+  // D-pad
+  bindTouch('dpad-left', 'ArrowLeft');
+  bindTouch('dpad-right', 'ArrowRight');
+  bindTouch('dpad-up', 'ArrowUp');
+  
+  // Action buttons
+  bindTouch('btn-jump', 'Space', (down) => {
+    if (down) {
+      // Also trigger keydown events for jump cut / state transitions
+      const evt = new KeyboardEvent('keydown', { code: 'Space' });
+      window.dispatchEvent(evt);
+    }
+  });
+  
+  bindTouch('btn-resonance', 'KeyE', (down) => {
+    if (down) {
+      const evt = new KeyboardEvent('keydown', { code: 'KeyE' });
+      window.dispatchEvent(evt);
+    }
+  });
+  
+  bindTouch('btn-shell', 'KeyF', (down) => {
+    if (down) {
+      const evt = new KeyboardEvent('keydown', { code: 'KeyF' });
+      window.dispatchEvent(evt);
+    }
+  });
+  
+  bindTouch('btn-clarity', 'KeyQ', (down) => {
+    if (down) {
+      const evt = new KeyboardEvent('keydown', { code: 'KeyQ' });
+      window.dispatchEvent(evt);
+    }
+  });
+  
+  bindTouch('btn-pause', 'KeyP', (down) => {
+    if (down) {
+      const evt = new KeyboardEvent('keydown', { code: 'KeyP' });
+      window.dispatchEvent(evt);
+    }
+  });
+  
+  // MAP button — toggle map mode when paused
+  bindTouch('btn-map', 'KeyM', (down) => {
+    if (down && paused) {
+      const evt = new KeyboardEvent('keydown', { code: 'KeyM' });
+      window.dispatchEvent(evt);
+    }
+  });
+  
+  // Down arrow for map scrolling
+  bindTouch('dpad-down', 'ArrowDown');
+  
+  // Tap anywhere on screen during title/briefing/transition to advance
+  canvas.addEventListener('touchstart', e => {
+    if (gameState === 'title' || 
+        (gameState === 'prologue' && briefingReady) ||
+        (gameState === 'briefing' && briefingReady) ||
+        (gameState === 'tour' && tourReady) ||
+        gameState === 'stageTransition' ||
+        (gameState === 'win' && winTimer > 240) ||
+        (gameState === 'gameover' && gameOverTimer > 360)) {
+      const evt = new KeyboardEvent('keydown', { code: 'Space' });
+      window.dispatchEvent(evt);
+    }
+  }, { passive: true });
+  
+  // Also handle the input screen Enter on mobile
+  document.getElementById('player-thought').addEventListener('touchend', e => {
+    // Don't prevent - let textarea work
+  });
+  
+  // Add a "Done" button for the input screen on mobile
+  const doneBtn = document.createElement('div');
+  doneBtn.textContent = 'Seal My Words →';
+  doneBtn.style.cssText = 'margin-top:3vh;padding:1.5vh 3vh;background:rgba(212,160,86,0.15);border:1px solid rgba(212,160,86,0.3);color:#d4a056;font-family:Georgia;font-size:3vw;border-radius:4px;cursor:pointer;';
+  doneBtn.addEventListener('click', submitThought);
+  const inputScreen = document.getElementById('input-screen');
+  if (inputScreen) {
+    inputScreen.querySelector('div').appendChild(doneBtn);
+  }
+  } // end initTouchControls
+  
+  // Start polling for touch-controls element
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initTouchControls();
+  } else {
+    document.addEventListener('DOMContentLoaded', initTouchControls);
+  }
+} else {
+  document.body.style.cursor = 'none';
+}
+</script>
+
+<!-- Touch Control Overlay -->
+<div id="touch-controls">
+  <div id="dpad-left" class="touch-btn">◀</div>
+  <div id="dpad-right" class="touch-btn">▶</div>
+  <div id="dpad-up" class="touch-btn">▲</div>
+  <div id="dpad-down" class="touch-btn" style="left:9.5vh;bottom:1vh;width:12vh;height:8vh;font-size:2.5vh;display:none;">▼</div>
+  <div id="btn-jump" class="touch-btn">JUMP</div>
+  <div id="btn-resonance" class="touch-btn">E<br><span style="font-size:0.7em;opacity:0.5">pulse</span></div>
+  <div id="btn-shell" class="touch-btn">F<br><span style="font-size:0.7em;opacity:0.5">shell</span></div>
+  <div id="btn-clarity" class="touch-btn">Q<br><span style="font-size:0.6em;opacity:0.5">clarity</span></div>
+  <div id="btn-pause" class="touch-btn">⏸</div>
+  <div id="btn-map" class="touch-btn" style="position:absolute;top:1.5vh;right:10vh;width:9vh;height:7vh;font-size:1.3vh;border-radius:20%;background:rgba(100,80,50,0.1);border-color:rgba(100,80,50,0.2);display:none;">MAP</div>
+</div>
+
+</body>
+</html>
